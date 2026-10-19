@@ -22,6 +22,7 @@ import (
 const help = `gonex v0.1.0-dev
   new NAME --module IMPORT_PATH [--framework-version VERSION] [--dry-run]
   create module NAME [--transport http|none] [--db] [--dry-run]
+  module version NAME --http vN [--policy preserve|replace] [--prefix PATH] [--dry-run]
   run | build | check
   openapi generate [--out openapi.json] [--dry-run]
   openapi validate [--file openapi.json]
@@ -153,6 +154,26 @@ func (c invocation) execute(args []string) error {
 		return nil
 	case "openapi":
 		return c.openapi(args[1:])
+	case "module":
+		if len(args) < 3 || args[1] != "version" {
+			return fmt.Errorf("usage: gonex module version NAME --http v1 [--policy preserve|replace]")
+		}
+		f := c.flags("module version")
+		version := f.String("http", "", "HTTP version")
+		policy := f.String("policy", "preserve", "legacy route policy")
+		prefix := f.String("prefix", "", "version URL prefix")
+		dry := f.Bool("dry-run", false, "show plan only")
+		if err := f.Parse(args[3:]); err != nil {
+			return err
+		}
+		if f.NArg() != 0 {
+			return fmt.Errorf("unexpected arguments")
+		}
+		p, err := scaffold.VersionModule(c.dir, args[2], *version, *policy, *prefix)
+		if err != nil {
+			return err
+		}
+		return c.plan(p, *dry)
 	case "db":
 		return c.database(args[1:])
 	default:

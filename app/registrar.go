@@ -20,6 +20,9 @@ func (r *Registrar) Handle(method, path string, handlers ...gin.HandlerFunc) err
 }
 
 func (r *Registrar) Endpoint(candidate transport.Route) error {
+	if r.reserved["GET /openapi.json"] && candidate.Method == "GET" && strings.HasPrefix(candidate.Path, "/openapi/") {
+		return fmt.Errorf("OpenAPI document paths are owned by runtime")
+	}
 	if r.reserved[candidate.Method+" "+candidate.Path] {
 		return fmt.Errorf("route is owned by runtime: %s %s", candidate.Method, candidate.Path)
 	}

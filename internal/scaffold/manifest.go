@@ -17,11 +17,12 @@ const Version = "v0.1.0"
 const manifestFile = ".gonex.json"
 
 type Module struct {
-	Name      string   `json:"name"`
-	Transport string   `json:"transport"`
-	DB        bool     `json:"db,omitempty"`
-	Versions  []string `json:"versions,omitempty"`
-	Replace   bool     `json:"replace,omitempty"`
+	Name      string            `json:"name"`
+	Transport string            `json:"transport"`
+	DB        bool              `json:"db,omitempty"`
+	Versions  []string          `json:"versions,omitempty"`
+	Replace   bool              `json:"replace,omitempty"`
+	Prefixes  map[string]string `json:"prefixes,omitempty"`
 }
 type Manifest struct {
 	Format           int               `json:"format"`

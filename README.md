@@ -4,7 +4,7 @@ A Go framework with explicit modules, Gin HTTP adapters and transport-independen
 
 Requires Go 1.27.1. Implementation proceeds in verified, separately committed phases. See [architecture](docs/architecture.md), [API decisions](docs/api-decisions.md) and [phase reports](docs/phases/0.md).
 
-Status: Phases 0–4 implemented: explicit modules, Gin lifecycle, typed endpoints, validation, OpenAPI 3.1, optional GORM persistence, SQL migrations and safe monolith/module CLI generation. Versioning and gRPC are not yet implemented.
+Status: Phases 0–5 implemented: explicit modules, Gin lifecycle, typed endpoints, OpenAPI 3.1, optional GORM persistence, migrations, safe CLI scaffolding and HTTP versioning with legacy compatibility. gRPC and microservices generation are not yet implemented.
 
 ```sh
 go test ./...

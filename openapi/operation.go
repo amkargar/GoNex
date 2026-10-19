@@ -8,6 +8,7 @@ import (
 )
 
 type Contract struct {
+	Version                                         string
 	Method, Path, OperationID, Summary, Description string
 	Tags                                            []string
 	Status                                          int

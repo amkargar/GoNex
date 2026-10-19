@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sort"
 	"sync"
 
 	"github.com/amkargar/gonex/config"
@@ -102,14 +103,23 @@ func (a *App) handler() (http.Handler, error) {
 				contracts = append(contracts, *r.Contract)
 			}
 		}
-		document, err := openapi.Generate(contracts)
+		documents, err := openapi.Documents(contracts)
 		if err != nil {
 			return nil, err
 		}
-		if err = openapi.Validate(document); err != nil {
-			return nil, fmt.Errorf("validate OpenAPI: %w", err)
+		versions := []string{}
+		for version := range documents {
+			versions = append(versions, version)
 		}
-		routes = append(routes, transport.Route{Method: "GET", Path: "/openapi.json", Handlers: []gin.HandlerFunc{func(c *gin.Context) { c.Data(200, "application/json", document) }}})
+		sort.Strings(versions)
+		for _, version := range versions {
+			path := "/openapi.json"
+			if version != "" {
+				path = "/openapi/" + version + ".json"
+			}
+			document := documents[version]
+			routes = append(routes, transport.Route{Method: "GET", Path: path, Handlers: []gin.HandlerFunc{func(c *gin.Context) { c.Data(200, "application/json", document) }}})
+		}
 		if a.config.DocsEnabled {
 			routes = append(routes, transport.Route{Method: "GET", Path: "/docs", Handlers: []gin.HandlerFunc{func(c *gin.Context) {
 				c.Data(200, "text/html; charset=utf-8", []byte(`<!doctype html><html><title>Gonex API</title><h1>Gonex API</h1><p><a href="/openapi.json">OpenAPI 3.1 document</a></p></html>`))
@@ -120,11 +130,15 @@ func (a *App) handler() (http.Handler, error) {
 }
 
 func (a *App) OpenAPI() ([]byte, error) {
+	return a.OpenAPIVersion("")
+}
+
+func (a *App) OpenAPIVersion(version string) ([]byte, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	contracts := []openapi.Contract{}
 	for _, r := range a.registrar.routes {
-		if r.Contract != nil {
+		if r.Contract != nil && r.Contract.Version == version {
 			contracts = append(contracts, *r.Contract)
 		}
 	}
