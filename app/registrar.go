@@ -9,6 +9,7 @@ import (
 )
 
 type Registrar struct {
+	checks    []readinessCheck
 	routes    []transport.Route
 	resources []Resource
 	sealed    bool
@@ -20,6 +21,17 @@ func (r *Registrar) Handle(method, path string, handlers ...gin.HandlerFunc) err
 }
 
 func (r *Registrar) Endpoint(candidate transport.Route) error {
+	if candidate.Contract != nil {
+		contract, err := candidate.Contract.Freeze()
+		if err != nil {
+			return err
+		}
+		if candidate.Method != contract.Method || candidate.Path != contract.Path {
+			return fmt.Errorf("HTTP route does not match its typed contract")
+		}
+		candidate.Contract = &contract
+	}
+	candidate.Handlers = append([]gin.HandlerFunc(nil), candidate.Handlers...)
 	if r.reserved["GET /openapi.json"] && candidate.Method == "GET" && strings.HasPrefix(candidate.Path, "/openapi/") {
 		return fmt.Errorf("OpenAPI document paths are owned by runtime")
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/amkargar/gonex/examples/basic/modules/healthdemo"
 	"github.com/amkargar/gonex/examples/basic/modules/users"
 	"github.com/amkargar/gonex/migration"
+	"github.com/amkargar/gonex/observability"
 	"github.com/amkargar/gonex/orm"
 	"log"
 	"os"
@@ -19,11 +20,18 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	a, err := gonex.New(config.Config{Address: os.Getenv("HTTP_ADDRESS")})
+	metrics := observability.NewMetrics()
+	settings := config.Config{Address: os.Getenv("HTTP_ADDRESS")}
+	settings.Middleware = append(settings.Middleware, observability.HTTP(metrics))
+	a, err := gonex.New(settings)
 	if err != nil {
 		log.Fatal(err)
 	}
 	var repo users.Repository
+	metrics.SetReadiness(a.Ready)
+	if err = a.Register(telemetryModule{Metrics: metrics, Expose: os.Getenv("GONEX_EXPOSE_METRICS") == "1"}); err != nil {
+		log.Fatal(err)
+	}
 	if os.Getenv("DATABASE_URL") != "" {
 		dialect := os.Getenv("DATABASE_DIALECT")
 		if dialect == "" {

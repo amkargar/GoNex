@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"errors"
 	apperrors "github.com/amkargar/gonex/errors"
 	"github.com/gin-gonic/gin"
@@ -19,6 +20,10 @@ type ErrorResponse struct {
 func renderError(c *gin.Context, err error, allowed []int) {
 	status := 500
 	response := ErrorResponse{Code: "internal", Message: "internal server error"}
+	if errors.Is(err, context.DeadlineExceeded) {
+		c.JSON(504, ErrorResponse{Code: "timeout", Message: "request timed out"})
+		return
+	}
 	var domain *apperrors.Error
 	if errors.As(err, &domain) {
 		switch domain.Code {

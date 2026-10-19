@@ -3,5 +3,9 @@
 *.sql text eol=lf
 *.json text eol=lf
 *.tmpl text eol=lf
+*.proto text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.binpb binary
 go.mod text eol=lf
 go.sum text eol=lf

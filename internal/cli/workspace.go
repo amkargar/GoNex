@@ -17,6 +17,7 @@ func (c invocation) create(args []string) error {
 	f := c.flags("create " + args[0])
 	service := f.String("service", "", "workspace service")
 	transport := f.String("transport", "http", "http, none, grpc or http,grpc")
+	httpVersion := f.String("http-version", "", "create an initially versioned HTTP adapter")
 	db := f.Bool("db", false, "generate persistence")
 	dry := f.Bool("dry-run", false, "show plan only")
 	module := f.String("module", "", "consumer module for client adapter")
@@ -39,6 +40,9 @@ func (c invocation) create(args []string) error {
 		switch args[0] {
 		case "module":
 			p, err = scaffold.CreateModule(root, args[1], *transport, *db)
+			if err == nil && *httpVersion != "" {
+				err = scaffold.VersionNewModule(p, args[1], *httpVersion)
+			}
 		case "client":
 			p, err = c.clientPlan(root, args[1], *module, *version)
 		default:

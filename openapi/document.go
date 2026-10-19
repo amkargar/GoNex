@@ -41,6 +41,15 @@ func Generate(contracts []Contract) ([]byte, error) {
 		}
 		methods[method] = op
 	}
+	for _, contract := range contracts {
+		for _, requirement := range contract.Security {
+			for name := range requirement {
+				if securitySchemes[name] == nil {
+					return nil, fmt.Errorf("undefined OpenAPI security scheme %s", name)
+				}
+			}
+		}
+	}
 	doc := Object{"openapi": "3.1.0", "info": Object{"title": "Gonex API", "version": "1.0.0"}, "paths": paths, "components": Object{"schemas": s.components}}
 	if len(securitySchemes) > 0 {
 		doc["components"].(Object)["securitySchemes"] = securitySchemes

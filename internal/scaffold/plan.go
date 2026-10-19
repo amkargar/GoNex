@@ -35,6 +35,9 @@ func (p *Plan) validate() error {
 	seen := map[string]bool{}
 	for _, c := range p.Changes {
 		clean := filepath.Clean(c.Path)
+		if filepath.VolumeName(clean) != "" || strings.ContainsAny(clean, ":\x00") {
+			return fmt.Errorf("unsafe generated path %q", c.Path)
+		}
 		if filepath.IsAbs(clean) || clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
 			return fmt.Errorf("unsafe generated path %q", c.Path)
 		}

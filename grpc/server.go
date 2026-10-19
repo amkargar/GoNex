@@ -42,11 +42,22 @@ func NewServer(o ServerOptions) (*Server, error) {
 	if o.Timeout == 0 {
 		o.Timeout = 5 * time.Second
 	}
-	opts := []ggrpc.ServerOption{ggrpc.ChainUnaryInterceptor(append([]ggrpc.UnaryServerInterceptor{serverDeadline(o.Timeout)}, o.Interceptors...)...), ggrpc.ChainStreamInterceptor(streamServerDeadline(o.Timeout))}
+	opts := []ggrpc.ServerOption{ggrpc.ChainUnaryInterceptor(append([]ggrpc.UnaryServerInterceptor{recoverUnary, serverDeadline(o.Timeout)}, o.Interceptors...)...), ggrpc.ChainStreamInterceptor(recoverStream, streamServerDeadline(o.Timeout))}
 	if o.TLS != nil {
 		cfg := o.TLS.Clone()
 		if cfg.MinVersion < tls.VersionTLS12 {
 			cfg.MinVersion = tls.VersionTLS12
+		}
+		if cfg.MaxVersion != 0 && cfg.MaxVersion < cfg.MinVersion {
+			return nil, fmt.Errorf("invalid TLS protocol range")
+		}
+		for _, certificate := range cfg.Certificates {
+			if certificate.PrivateKey == nil || len(certificate.Certificate) == 0 {
+				return nil, fmt.Errorf("invalid TLS server certificate/key")
+			}
+		}
+		if cfg.ClientCAs != nil {
+			cfg.ClientCAs = cfg.ClientCAs.Clone()
 		}
 		if len(cfg.Certificates) == 0 && cfg.GetCertificate == nil {
 			return nil, fmt.Errorf("gRPC TLS needs a server certificate")

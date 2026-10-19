@@ -3,10 +3,12 @@ package config
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"time"
 )
 
 type Config struct {
+	Middleware                                              []gin.HandlerFunc
 	DisableHTTP                                             bool
 	DisableOpenAPI                                          bool
 	DocsEnabled                                             bool
@@ -15,6 +17,12 @@ type Config struct {
 }
 
 func (c Config) Normalize() (Config, error) {
+	for _, middleware := range c.Middleware {
+		if middleware == nil {
+			return c, fmt.Errorf("nil HTTP middleware")
+		}
+	}
+	c.Middleware = append([]gin.HandlerFunc(nil), c.Middleware...)
 	if c.Address == "" {
 		c.Address = "127.0.0.1:8080"
 	}

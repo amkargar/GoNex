@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	transport "github.com/amkargar/gonex/http"
 	"github.com/amkargar/gonex/internal/scaffold"
 	"github.com/amkargar/gonex/migration"
 	"github.com/amkargar/gonex/openapi"
@@ -19,16 +20,19 @@ import (
 	"time"
 )
 
-const help = `gonex v0.1.0-dev
+var Version = "v0.1.0-dev"
+
+const help = `
   new NAME --module IMPORT_PATH [--arch monolith|microservices] [--dry-run]
   create module NAME [--service NAME] [--transport http|none|grpc|http,grpc] [--db] [--dry-run]
   create service NAME [--dry-run]
   create client PROVIDER --service CONSUMER --module MODULE [--version v1] [--dry-run]
   module enable NAME --grpc [--service NAME] [--dry-run]
   module version NAME --http vN [--policy preserve|replace] [--prefix PATH] [--dry-run]
+  create module NAME --http-version vN [--dry-run]
   run | build | check [--service NAME]
-  openapi generate [--out openapi.json] [--dry-run]
-  openapi validate [--file openapi.json]
+  openapi generate [--out openapi.json] [--http-version vN] [--dry-run]
+  openapi validate [--file openapi.json] [--against BASELINE]
   db migrate | db status [--dry-run]
   grpc generate [--dry-run] | grpc check
 Generators refuse handwritten overwrites. Run project commands from its root.
@@ -43,17 +47,17 @@ type invocation struct {
 func Execute(ctx context.Context, args []string, dir string, out, errout io.Writer) int {
 	for _, arg := range args {
 		if arg == "--help" {
-			fmt.Fprint(out, help)
+			fmt.Fprintf(out, "gonex %s%s", Version, help)
 			return 0
 		}
 	}
 	c := invocation{ctx: ctx, dir: dir, out: out, errout: errout}
 	if len(args) == 0 || args[0] == "--help" || args[0] == "help" {
-		fmt.Fprint(out, help)
+		fmt.Fprintf(out, "gonex %s%s", Version, help)
 		return 0
 	}
 	if args[0] == "--version" {
-		fmt.Fprintln(out, "v0.1.0-dev")
+		fmt.Fprintln(out, Version)
 		return 0
 	}
 	err := c.execute(args)
@@ -231,6 +235,8 @@ func (c invocation) openapi(args []string) error {
 	service := f.String("service", "", "workspace service")
 	out := f.String("out", "openapi.json", "output artifact")
 	file := f.String("file", "openapi.json", "document to validate")
+	against := f.String("against", "", "compatibility baseline document")
+	version := f.String("http-version", "", "HTTP document version")
 	dry := f.Bool("dry-run", false, "show plan only")
 	if err := f.Parse(args[1:]); err != nil {
 		return err
@@ -250,7 +256,17 @@ func (c invocation) openapi(args []string) error {
 		if err != nil {
 			return err
 		}
-		return openapi.Validate(data)
+		if err = openapi.Validate(data); err != nil {
+			return err
+		}
+		if *against != "" {
+			baseline, err := os.ReadFile(filepath.Join(c.dir, *against))
+			if err != nil {
+				return err
+			}
+			return openapi.Compatible(baseline, data)
+		}
+		return nil
 	}
 	if args[0] != "generate" {
 		return fmt.Errorf("unknown OpenAPI operation")
@@ -277,7 +293,14 @@ func (c invocation) openapi(args []string) error {
 	name := temp.Name()
 	temp.Close()
 	defer os.Remove(name)
-	if err = c.goTool("run", ".", "--gonex-openapi", name); err != nil {
+	arguments := []string{"run", ".", "--gonex-openapi", name}
+	if *version != "" {
+		if !transport.ValidVersion(*version) {
+			return fmt.Errorf("invalid HTTP version")
+		}
+		arguments = append(arguments, *version)
+	}
+	if err = c.goTool(arguments...); err != nil {
 		return err
 	}
 	data, err := os.ReadFile(name)

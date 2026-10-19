@@ -4,3 +4,4 @@
 *.db-wal
 .env
 /dist/
+/.tools/

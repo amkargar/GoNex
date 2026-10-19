@@ -3,6 +3,7 @@ package http
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -17,7 +18,7 @@ type Route struct {
 }
 
 // Build validates the complete route set before exposing a router.
-func Build(routes []Route) (engine *gin.Engine, err error) {
+func Build(routes []Route, middleware ...gin.HandlerFunc) (engine *gin.Engine, err error) {
 	defer func() {
 		if recover() != nil {
 			engine = nil
@@ -25,7 +26,15 @@ func Build(routes []Route) (engine *gin.Engine, err error) {
 		}
 	}()
 	engine = gin.New()
-	engine.Use(gin.Recovery())
+	engine.Use(gin.CustomRecoveryWithWriter(io.Discard, func(c *gin.Context, _ any) {
+		c.AbortWithStatusJSON(500, ErrorResponse{Code: "internal", Message: "internal server error"})
+	}))
+	for _, handler := range middleware {
+		if handler == nil {
+			return nil, fmt.Errorf("nil HTTP middleware")
+		}
+	}
+	engine.Use(middleware...)
 	if err = engine.SetTrustedProxies(nil); err != nil {
 		return nil, err
 	}

@@ -1,0 +1,20 @@
+Command: go test ./tests -run ^$ -bench BenchmarkComparison -benchmem -benchtime=200ms -count=3
+go version go1.27.1 windows/amd64
+goos: windows
+goarch: amd64
+pkg: github.com/amkargar/gonex/tests
+cpu: Intel(R) Core(TM) i5-8350U CPU @ 1.70GHz
+BenchmarkComparisonHTTP/Gin-8   	  134816	      1617 ns/op	    1049 B/op	      11 allocs/op
+BenchmarkComparisonHTTP/Gin-8   	  165975	      1554 ns/op	    1049 B/op	      11 allocs/op
+BenchmarkComparisonHTTP/Gin-8   	  164571	      1537 ns/op	    1049 B/op	      11 allocs/op
+BenchmarkComparisonHTTP/Gonex-8 	  119589	      2131 ns/op	    1146 B/op	      14 allocs/op
+BenchmarkComparisonHTTP/Gonex-8 	  122654	      2001 ns/op	    1146 B/op	      14 allocs/op
+BenchmarkComparisonHTTP/Gonex-8 	  123122	      1933 ns/op	    1146 B/op	      14 allocs/op
+BenchmarkComparisonDatabase/GORM-8         	    1845	    129181 ns/op	    5538 B/op	      81 allocs/op
+BenchmarkComparisonDatabase/GORM-8         	    1940	    118212 ns/op	    5538 B/op	      81 allocs/op
+BenchmarkComparisonDatabase/GORM-8         	    2223	    121206 ns/op	    5536 B/op	      81 allocs/op
+BenchmarkComparisonDatabase/Gonex-8        	    2080	    122830 ns/op	    5536 B/op	      81 allocs/op
+BenchmarkComparisonDatabase/Gonex-8        	    2118	    117536 ns/op	    5536 B/op	      81 allocs/op
+BenchmarkComparisonDatabase/Gonex-8        	    1860	    145603 ns/op	    5537 B/op	      81 allocs/op
+PASS
+ok  	github.com/amkargar/gonex/tests	6.653s

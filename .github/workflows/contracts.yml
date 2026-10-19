@@ -1,0 +1,30 @@
+name: Contracts
+on:
+  push:
+    paths: ['contracts/**', 'internal/contracts/**', '.github/workflows/contracts.yml']
+  pull_request:
+    paths: ['contracts/**', 'internal/contracts/**', '.github/workflows/contracts.yml']
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - run: go run ./internal/tooling/bufinstall .tools
+      - run: .tools/buf lint contracts/proto
+      - run: .tools/buf breaking contracts/proto --against contracts/baseline.binpb
+      - run: go run ./cmd/gonex grpc check
+      - run: go test ./internal/contracts
+      - run: go run ./cmd/gonex grpc generate
+      - run: git diff --exit-code -- contracts

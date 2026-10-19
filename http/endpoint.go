@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/amkargar/gonex/openapi"
 	"github.com/gin-gonic/gin"
@@ -39,6 +40,7 @@ var validation = func() *validator.Validate {
 }()
 
 func Register[I, O any](r EndpointRegistrar, e Endpoint[I, O]) (err error) {
+	e.Errors = append([]int(nil), e.Errors...)
 	defer func() {
 		if recover() != nil {
 			err = fmt.Errorf("invalid endpoint validation definition")
@@ -67,6 +69,12 @@ func Register[I, O any](r EndpointRegistrar, e Endpoint[I, O]) (err error) {
 	}
 	var probe I
 	_ = validation.Struct(probe)
+	bodyField := ""
+	for _, in := range inputs {
+		if in.Origin == "body" {
+			bodyField = contract.Request.Field(in.Index).Name
+		}
+	}
 	handler := func(c *gin.Context) {
 		var input I
 		if !bind(c, reflect.ValueOf(&input).Elem(), inputs, e.MaxBodyBytes) {
@@ -77,6 +85,13 @@ func Register[I, O any](r EndpointRegistrar, e Endpoint[I, O]) (err error) {
 			if failures, ok := err.(validator.ValidationErrors); ok {
 				for _, f := range failures {
 					_, path, _ := strings.Cut(f.Namespace(), ".")
+					if bodyField != "" {
+						if path == bodyField {
+							path = "body"
+						} else {
+							path = strings.TrimPrefix(path, bodyField+".")
+						}
+					}
 					fields = append(fields, FieldError{path, f.Tag()})
 				}
 			}
@@ -84,6 +99,9 @@ func Register[I, O any](r EndpointRegistrar, e Endpoint[I, O]) (err error) {
 			return
 		}
 		output, err := e.Handler(c.Request.Context(), input)
+		if err == nil {
+			err = c.Request.Context().Err()
+		}
 		if err != nil {
 			renderError(c, err, e.Errors)
 			return
@@ -92,7 +110,12 @@ func Register[I, O any](r EndpointRegistrar, e Endpoint[I, O]) (err error) {
 			c.Status(204)
 			return
 		}
-		c.JSON(e.Status, output)
+		data, err := json.Marshal(output)
+		if err != nil {
+			c.JSON(500, ErrorResponse{Code: "internal", Message: "internal server error"})
+			return
+		}
+		c.Data(e.Status, "application/json; charset=utf-8", data)
 	}
 	return r.Endpoint(Route{Method: contract.Method, Path: e.Path, Handlers: append(append([]gin.HandlerFunc(nil), e.Middleware...), handler), Contract: &contract})
 }

@@ -8,6 +8,7 @@ cd shop
 go mod tidy
 gonex create module users
 gonex create module reports --transport none
+go mod tidy
 gonex check
 gonex run
 ```
@@ -21,3 +22,7 @@ Use `--dry-run` on new/create commands to inspect plans without creating files. 
 `gonex openapi generate --out openapi.json` executes the project's initialization/export path without listening, validates the result and writes the JSON artifact. `gonex openapi validate --file openapi.json` validates offline. Both export and migration support dry runs without executing the project or connecting to the database.
 
 Core-only modules have only module/service/test files. HTTP adapters contain handlers.go, schemas.go, routes.go and openapi.go. The extra http_registry_gen.go owns HTTP registration so future adapter versions can share the same service safely. Add your business behavior in the handwritten files.
+
+Run `go mod tidy` after generators add dependencies. For a new module that starts with a versioned API, use `gonex create module catalog --http-version v1`; it registers only /api/v1 routes. Use `gonex openapi generate --http-version v1 --out v1.json` to export that contract, and `openapi validate --file v1.json --against baseline.json` for compatibility.
+
+The checkout's [basic example](../examples/basic/main.go) runs without a database; [database setup](database-migrations.md) adds persistence. See [modules](modules.md), [gRPC](grpc.md), [microservices generation](microservices.md), the [runnable two-service example](../examples/microservices/README.md), [operations](operations.md) and [security](security.md) before deploying.

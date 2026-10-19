@@ -27,6 +27,11 @@ type testServer struct {
 	calls atomic.Int32
 }
 
+func (s *testServer) StreamingOutputCall(_ *pb.StreamingOutputCallRequest, stream pb.TestService_StreamingOutputCallServer) error {
+	<-stream.Context().Done()
+	return rpc.ToStatus(stream.Context().Err())
+}
+
 func (s *testServer) UnaryCall(ctx context.Context, in *pb.SimpleRequest) (*pb.SimpleResponse, error) {
 	s.calls.Add(1)
 	if string(in.GetPayload().GetBody()) == "slow" {
@@ -111,6 +116,13 @@ func TestClientsReuseDeadlineAndClose(t *testing.T) {
 		t.Fatal(e)
 	}
 	different, _ := rpc.NewClientConfig(rpc.ClientOptions{Target: server.Address(), DevelopmentInsecure: true})
+	stream, e := client.StreamingOutputCall(ctx, &pb.StreamingOutputCallRequest{})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = stream.Recv(); status.Code(e) != codes.DeadlineExceeded {
+		t.Fatal("stream deadline not enforced", e)
+	}
 	other, _ := pool.Conn(different)
 	if other == conn {
 		t.Fatal("different immutable configurations shared a connection")
@@ -207,5 +219,93 @@ func TestTLSAndMTLS(t *testing.T) {
 	}
 	if _, e = rpc.NewClientConfig(rpc.ClientOptions{Target: "localhost:1", TLS: &tls.Config{InsecureSkipVerify: true}}); e == nil {
 		t.Fatal("verification bypass accepted")
+	}
+}
+
+type blockingService struct {
+	pb.UnimplementedTestServiceServer
+	entered, release chan struct{}
+}
+
+func (s blockingService) UnaryCall(ctx context.Context, _ *pb.SimpleRequest) (*pb.SimpleResponse, error) {
+	close(s.entered)
+	select {
+	case <-s.release:
+		return &pb.SimpleResponse{}, nil
+	case <-ctx.Done():
+		return nil, rpc.ToStatus(ctx.Err())
+	}
+}
+func TestGracefulAndForcedGRPCStop(t *testing.T) {
+	for _, force := range []bool{false, true} {
+		t.Run(map[bool]string{false: "drain", true: "force"}[force], func(t *testing.T) {
+			service := blockingService{entered: make(chan struct{}), release: make(chan struct{})}
+			server, e := rpc.NewServer(rpc.ServerOptions{Address: "127.0.0.1:0", DevelopmentInsecure: true})
+			if e != nil {
+				t.Fatal(e)
+			}
+			if e = server.Register(func(s *grpc.Server) error { pb.RegisterTestServiceServer(s, service); return nil }); e != nil {
+				t.Fatal(e)
+			}
+			if e = server.Start(context.Background()); e != nil {
+				t.Fatal(e)
+			}
+			defer func() {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				_ = server.Close(ctx)
+			}()
+			pool := rpc.NewClients()
+			defer pool.Close(context.Background())
+			config, e := rpc.NewClientConfig(rpc.ClientOptions{Target: server.Address(), DevelopmentInsecure: true, Timeout: time.Second})
+			if e != nil {
+				t.Fatal(e)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			if e = pool.Ready(ctx, config); e != nil {
+				t.Fatal(e)
+			}
+			client, e := rpc.Client(pool, config, pb.NewTestServiceClient)
+			if e != nil {
+				t.Fatal(e)
+			}
+			call := make(chan error, 1)
+			go func() { _, e := client.UnaryCall(ctx, &pb.SimpleRequest{}); call <- e }()
+			select {
+			case <-service.entered:
+			case <-ctx.Done():
+				t.Fatal("RPC did not begin")
+			}
+			duration := time.Second
+			if force {
+				duration = 10 * time.Millisecond
+			}
+			shutdown, cancelShutdown := context.WithTimeout(context.Background(), duration)
+			defer cancelShutdown()
+			done := make(chan error, 1)
+			go func() { done <- server.Close(shutdown) }()
+			if force {
+				if e = <-done; e == nil {
+					t.Fatal("forced stop did not report its deadline")
+				}
+				if e = <-call; e == nil {
+					t.Fatal("forced RPC unexpectedly succeeded")
+				}
+			} else {
+				select {
+				case <-done:
+					t.Fatal("server stopped before its RPC drained")
+				case <-time.After(20 * time.Millisecond):
+				}
+				close(service.release)
+				if e = <-call; e != nil {
+					t.Fatal(e)
+				}
+				if e = <-done; e != nil {
+					t.Fatal(e)
+				}
+			}
+		})
 	}
 }

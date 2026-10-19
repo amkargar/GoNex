@@ -15,8 +15,9 @@ func main(){
  ctx,stop:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM);defer stop()
  a,err:=gonex.New(config.Load());if err!=nil{log.Fatal(err)}
  if err=a.Register(modules.All()...);err!=nil{log.Fatal(err)}
- if len(os.Args)==3 && os.Args[1]=="--gonex-openapi"{
-  document,err:=a.OpenAPI();if err!=nil{log.Fatal(err)}
+ if (len(os.Args)==3||len(os.Args)==4) && os.Args[1]=="--gonex-openapi"{
+  version:="";if len(os.Args)==4{version=os.Args[3]}
+  document,err:=a.OpenAPIVersion(version);if err!=nil{log.Fatal(err)}
   if err=os.WriteFile(os.Args[2],document,0644);err!=nil{log.Fatal(err)};return
  }
  if err=a.Run(ctx);err!=nil{log.Fatal(err)}

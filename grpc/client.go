@@ -48,6 +48,9 @@ func NewClientConfig(o ClientOptions) (*ClientConfig, error) {
 		if cfg.MinVersion < tls.VersionTLS12 {
 			cfg.MinVersion = tls.VersionTLS12
 		}
+		if cfg.MaxVersion != 0 && cfg.MaxVersion < cfg.MinVersion {
+			return nil, fmt.Errorf("invalid TLS protocol range")
+		}
 		if cfg.RootCAs != nil {
 			cfg.RootCAs = cfg.RootCAs.Clone()
 		}

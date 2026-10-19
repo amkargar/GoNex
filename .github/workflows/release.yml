@@ -1,0 +1,45 @@
+name: Release artifacts
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/test.yml
+  contracts:
+    uses: ./.github/workflows/contracts.yml
+  build:
+    needs: [verify, contracts]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [linux, windows, darwin]
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - name: Build CLI
+        shell: bash
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: '0'
+          RELEASE_REF: ${{ github.ref_name }}
+        run: |
+          suffix=''
+          if [ "$GOOS" = windows ]; then suffix='.exe'; fi
+          mkdir -p dist
+          go build -trimpath -ldflags "-X github.com/amkargar/gonex/internal/cli.Version=$RELEASE_REF" -o "dist/gonex-$GOOS-$GOARCH$suffix" ./cmd/gonex
+          sha256sum dist/* > dist/sha256.txt
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: gonex-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*

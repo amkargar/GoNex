@@ -4,7 +4,7 @@ A Go framework with explicit modules, Gin HTTP adapters and transport-independen
 
 Requires Go 1.27.1. Implementation proceeds in verified, separately committed phases. See [architecture](docs/architecture.md), [API decisions](docs/api-decisions.md) and [phase reports](docs/phases/0.md).
 
-Status: Phases 0–7 implemented, including optional TLS/mTLS gRPC, managed clients, reproducible versioned contracts and independent microservices scaffolding. Operational/release hardening is next.
+Status: Phases 0–8 implemented in separate commits. Includes typed HTTP/OpenAPI, optional GORM and TLS/mTLS gRPC, reproducible contracts, safe monolith/microservice scaffolding, readiness, tracing, metrics and security middleware. Local checks pass; hosted CI, Linux race and live PostgreSQL gates remain unverified. This checkout is not a published release.
 
 ```sh
 go test ./...
@@ -18,3 +18,7 @@ The example serves `GET /healthz` → `{"status":"ok"}`, `GET /users/1` → `{"i
 See [HTTP contracts](docs/http-openapi.md) and the per-phase reports for verification and limitations.
 
 Build the CLI with `go build -o gonex.exe ./cmd/gonex`; see [getting started](docs/getting-started.md). Each implementation phase has its own commit and report under `docs/phases/`.
+
+Guides: [modules](docs/modules.md), [database](docs/database-migrations.md), [gRPC](docs/grpc.md), [HTTP versions](docs/versioning.md), [microservices](docs/microservices.md), [operations](docs/operations.md), [security](docs/security.md), [upgrades](docs/upgrade.md), [release policy](docs/release.md) and [benchmarks](docs/benchmarks/README.md). The [two-service example](examples/microservices/README.md) demonstrates HTTP → gRPC with explicit TLS/development configuration.
+
+Phase reports: [0](docs/phases/0.md), [1](docs/phases/1.md), [2](docs/phases/2.md), [3](docs/phases/3.md), [4](docs/phases/4.md), [5](docs/phases/5.md), [6](docs/phases/6.md), [7](docs/phases/7.md), [8](docs/phases/8.md).

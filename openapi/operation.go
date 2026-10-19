@@ -51,6 +51,9 @@ func Inputs(t reflect.Type) ([]Input, error) {
 		if in.Origin == "body" {
 			in.Name = "body"
 			in.Required = true
+			if f.Type.Kind() == reflect.Struct && hasTag(f.Tag.Get("validate"), "required") {
+				return nil, fmt.Errorf("body presence is already required; omit required on a value struct or use a pointer")
+			}
 		} else {
 			kind := in.Type.Kind()
 			if kind == reflect.Pointer {
@@ -73,6 +76,11 @@ func Inputs(t reflect.Type) ([]Input, error) {
 var pathParam = regexp.MustCompile(`:([A-Za-z_][A-Za-z0-9_]*)`)
 
 func (c Contract) operation(s *schemas) (string, Object, error) {
+	switch strings.ToUpper(c.Method) {
+	case "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE":
+	default:
+		return "", nil, fmt.Errorf("unsupported OpenAPI HTTP method")
+	}
 	if c.OperationID == "" || c.Status < 200 || c.Status > 299 || c.Response == nil || c.Response.Name() == "" {
 		return "", nil, fmt.Errorf("endpoint needs operation ID, success status and named response type")
 	}
@@ -100,11 +108,19 @@ func (c Contract) operation(s *schemas) (string, Object, error) {
 	parameters := []Object{}
 	bound := map[string]bool{}
 	for _, in := range inputs {
-		schema, e := s.schema(in.Type, false)
+		schemaType := in.Type
+		tags := c.Request.Field(in.Index).Tag.Get("validate")
+		if in.Origin == "body" && hasTag(tags, "required") && schemaType.Kind() == reflect.Pointer {
+			schemaType = schemaType.Elem()
+		}
+		schema, e := s.schema(schemaType, false)
 		if e != nil {
 			return "", nil, e
 		}
 		if in.Origin == "body" {
+			if e = constraints(schema, in.Type, tags); e != nil {
+				return "", nil, e
+			}
 			media := Object{"schema": schema}
 			if c.RequestExample != nil {
 				media["example"] = c.RequestExample
@@ -145,7 +161,7 @@ func (c Contract) operation(s *schemas) (string, Object, error) {
 		response["content"] = Object{"application/json": media}
 	}
 	responses[fmt.Sprint(c.Status)] = response
-	for _, status := range append([]int{400, 413, 422, 500}, c.Errors...) {
+	for _, status := range append([]int{400, 413, 422, 500, 504}, c.Errors...) {
 		if status < 400 || status > 599 {
 			return "", nil, fmt.Errorf("invalid documented error status %d", status)
 		}

@@ -129,13 +129,26 @@ func TestGeneratedProjectBuilds(t *testing.T) {
 		}
 	}
 	framework, e := filepath.Abs(filepath.Join("..", ".."))
+	versionPlan, versionError := CreateModule(root, "versioned", "http", false)
+	if versionError != nil {
+		t.Fatal(versionError)
+	}
+	if versionError = VersionNewModule(versionPlan, "versioned", "v1"); versionError != nil {
+		t.Fatal(versionError)
+	}
+	if versionError = versionPlan.Apply(false); versionError != nil {
+		t.Fatal(versionError)
+	}
+	if _, err := os.Stat(filepath.Join(root, "modules/versioned/http/routes.go")); !os.IsNotExist(err) {
+		t.Fatal("initially versioned profile created legacy adapter")
+	}
 	if e != nil {
 		t.Fatal(e)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	// This isolated harness override never enters generated templates.
-	for _, args := range [][]string{{"mod", "edit", "-replace=" + Framework + "=" + filepath.ToSlash(framework)}, {"mod", "tidy"}, {"test", "./..."}, {"vet", "./..."}, {"build", "./..."}, {"run", ".", "--gonex-openapi", "openapi.json"}} {
+	for _, args := range [][]string{{"mod", "edit", "-replace=" + Framework + "=" + filepath.ToSlash(framework)}, {"mod", "tidy"}, {"test", "./..."}, {"vet", "./..."}, {"build", "./..."}, {"run", ".", "--gonex-openapi", "openapi.json"}, {"run", ".", "--gonex-openapi", "v1.openapi.json", "v1"}} {
 		cmd := exec.CommandContext(ctx, "go", args...)
 		cmd.Dir = root
 		cmd.Env = append(os.Environ(), "GOWORK=off", "DATABASE_DIALECT=sqlite", "DATABASE_URL=file:"+filepath.ToSlash(filepath.Join(root, "fixture.db")))

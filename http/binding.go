@@ -7,6 +7,7 @@ import (
 	"github.com/amkargar/gonex/openapi"
 	"github.com/gin-gonic/gin"
 	"io"
+	"math"
 	"mime"
 	nethttp "net/http"
 	"reflect"
@@ -53,6 +54,12 @@ func bind(c *gin.Context, value reflect.Value, inputs []openapi.Input, limit int
 				return bad(400, "body must not be null")
 			}
 			strict := json.NewDecoder(bytes.NewReader(raw))
+			if err = uniqueJSON(json.NewDecoder(bytes.NewReader(raw)), 0); err != nil {
+				return bad(400, "invalid JSON shape or duplicate key")
+			}
+			if err = jsonShape(raw, field.Type(), 0); err != nil {
+				return bad(400, "invalid JSON shape")
+			}
 			strict.DisallowUnknownFields()
 			if err = strict.Decode(field.Addr().Interface()); err != nil {
 				return bad(400, "invalid JSON body")
@@ -113,6 +120,9 @@ func bind(c *gin.Context, value reflect.Value, inputs []openapi.Input, limit int
 		case reflect.Float32, reflect.Float64:
 			var v float64
 			v, err = strconv.ParseFloat(raw, field.Type().Bits())
+			if math.IsNaN(v) || math.IsInf(v, 0) {
+				return bad(400, "invalid finite numeric parameter "+in.Name)
+			}
 			field.SetFloat(v)
 		}
 		if err != nil {

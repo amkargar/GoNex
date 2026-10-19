@@ -34,11 +34,14 @@ func TestUserContracts(t *testing.T) {
 	}{
 		{`{"name":"Grace","email":"grace@example.com"}`, 201, `"id":"2"`},
 		{`{"name":"Grace","email":"grace@example.com"}`, 409, "conflict"},
-		{`{"name":"Grace","email":"bad"}`, 422, "email"},
+		{`{"name":"Grace","email":"bad"}`, 422, `"field":"email"`},
 		{`{"name":"Grace"}`, 422, "required"},
 		{`{"name":`, 400, "invalid JSON"},
 		{`{"unknown":1}`, 400, "invalid JSON"},
 		{`{} {}`, 400, "invalid JSON"},
+		{`{"name":"Grace","name":"Other","email":"unique@example.com"}`, 400, "duplicate"},
+		{`{"Name":"Grace","email":"unique@example.com"}`, 400, "shape"},
+		{`{"name":null,"email":"unique@example.com"}`, 400, "shape"},
 	} {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("POST", "/users", strings.NewReader(tc.body))
@@ -74,7 +77,7 @@ type mixedInput struct {
 	ID    int     `path:"id" validate:"min=1"`
 	Page  *int    `query:"page" validate:"omitempty,min=0"`
 	Token string  `header:"X-Token" validate:"required"`
-	Body  payload `body:"true" validate:"required"`
+	Body  payload `body:"true"`
 }
 type mixedOutput struct {
 	ID    int  `json:"id"`

@@ -56,6 +56,14 @@ func New(c config.Config) (*App, error) {
 	err = transport.Register(&a.registrar, transport.Endpoint[transport.NoBody, HealthResponse]{Method: "GET", Path: "/healthz", OperationID: "health", Status: 200, Handler: func(context.Context, transport.NoBody) (HealthResponse, error) {
 		return HealthResponse{Status: "ok"}, nil
 	}})
+	if err == nil {
+		err = transport.Register(&a.registrar, transport.Endpoint[transport.NoBody, HealthResponse]{Method: "GET", Path: "/readyz", OperationID: "readiness", Status: 200, Errors: []int{503}, Handler: func(ctx context.Context, _ transport.NoBody) (HealthResponse, error) {
+			if err := a.Ready(ctx); err != nil {
+				return HealthResponse{}, err
+			}
+			return HealthResponse{Status: "ready"}, nil
+		}})
+	}
 	return a, err
 }
 
@@ -72,7 +80,7 @@ func (a *App) Register(modules ...Module) error {
 	if a.state != Created && a.state != Registered {
 		return fmt.Errorf("cannot register in state %s", a.state)
 	}
-	r := &Registrar{routes: append([]transport.Route(nil), a.registrar.routes...), resources: append([]Resource(nil), a.registrar.resources...), reserved: a.registrar.reserved}
+	r := &Registrar{routes: append([]transport.Route(nil), a.registrar.routes...), resources: append([]Resource(nil), a.registrar.resources...), reserved: a.registrar.reserved, checks: append([]readinessCheck(nil), a.registrar.checks...)}
 	defer func() { r.sealed = true }()
 	for _, m := range modules {
 		if m == nil {
@@ -82,7 +90,7 @@ func (a *App) Register(modules ...Module) error {
 			return fmt.Errorf("register module: %w", err)
 		}
 	}
-	a.registrar = Registrar{routes: r.routes, resources: r.resources, reserved: r.reserved}
+	a.registrar = Registrar{routes: r.routes, resources: r.resources, reserved: r.reserved, checks: r.checks}
 	a.state = Registered
 	return nil
 }
@@ -126,7 +134,7 @@ func (a *App) handler() (http.Handler, error) {
 			}}})
 		}
 	}
-	return transport.Build(routes)
+	return transport.Build(routes, a.config.Middleware...)
 }
 
 func (a *App) OpenAPI() ([]byte, error) {
@@ -134,6 +142,9 @@ func (a *App) OpenAPI() ([]byte, error) {
 }
 
 func (a *App) OpenAPIVersion(version string) ([]byte, error) {
+	if version != "" && !transport.ValidVersion(version) {
+		return nil, fmt.Errorf("invalid HTTP version")
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	contracts := []openapi.Contract{}
@@ -141,6 +152,9 @@ func (a *App) OpenAPIVersion(version string) ([]byte, error) {
 		if r.Contract != nil && r.Contract.Version == version {
 			contracts = append(contracts, *r.Contract)
 		}
+	}
+	if version != "" && len(contracts) == 0 {
+		return nil, fmt.Errorf("HTTP version %s is not registered", version)
 	}
 	return openapi.Generate(contracts)
 }

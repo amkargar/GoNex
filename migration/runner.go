@@ -69,7 +69,11 @@ func New(db *sql.DB, dialect string, files fs.FS) (*Runner, error) {
 }
 
 func (r *Runner) transaction(ctx context.Context, fn func(*sql.Tx) error) error {
-	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	isolation := sql.LevelSerializable
+	if r.dialect == "postgres" {
+		isolation = sql.LevelReadCommitted
+	}
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{Isolation: isolation})
 	if err != nil {
 		return fmt.Errorf("acquire migration transaction: %w", err)
 	}

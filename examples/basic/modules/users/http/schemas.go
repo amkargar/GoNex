@@ -5,7 +5,7 @@ type CreateUser struct {
 	Email string `json:"email" validate:"required,email"`
 }
 type CreateRequest struct {
-	Body CreateUser `body:"true" validate:"required"`
+	Body CreateUser `body:"true"`
 }
 type GetRequest struct {
 	ID string `path:"id" validate:"required"`
