@@ -7,6 +7,8 @@ import (
 )
 
 type Config struct {
+	DisableOpenAPI                                          bool
+	DocsEnabled                                             bool
 	Address                                                 string
 	ReadTimeout, WriteTimeout, IdleTimeout, ShutdownTimeout time.Duration
 }

@@ -1,0 +1,13 @@
+# Typed HTTP and OpenAPI
+
+Use `http.Register(registrar, http.Endpoint[Request, Response]{...})` with named Go structs, explicit method/path, operation ID, success status and handler. Business services return plain Go values; adapters map those into transport schemas. `NoBody` models endpoints without a body.
+
+Each request wrapper field declares exactly one origin: `path:"id"`, `query:"page"`, `header:"X-Token"` or `body:"true"`. There may be only one body field. Parameters are scalar or pointers to scalars. Path placeholders must match field bindings. Body schemas use standard `json` tags and `validate` tags. Required, min/max, email, nested structs and slice `dive` validation are supported. Use pointers to distinguish absent numeric/boolean values from zero/false; `required` on a pointer requires presence, while `required` on a scalar rejects its zero value.
+
+Malformed JSON, missing required parameters and unsupported content types return 400. Unknown JSON fields, trailing values, duplicate query/header values and null nonnullable bodies are rejected. JSON duplicate object keys follow encoding/json behavior (last value wins). Validation failures return 422 with field paths and codes. Request bodies default to 1 MiB; set `MaxBodyBytes` per endpoint. Application errors must be declared in `Errors` to expose their mapped status/message; undeclared/internal errors return a redacted 500. 204 responses have no body.
+
+Optional summary, description, tags, request/response examples, security requirements/schemes and middleware live on the same endpoint contract. Middleware must return documented response shapes/statuses. Low-level `Registrar.Handle` is an escape hatch for raw Gin routes and is not projected into OpenAPI; public application endpoints should use typed registration.
+
+`/openapi.json` is enabled by default; `DisableOpenAPI` removes it in production. `/docs` is an opt-in local document link (`DocsEnabled`), without externally loaded assets. Runtime-owned paths reject conflicts. The specification is built and validated once during startup, not per request. `App.OpenAPI()` explicitly exports without starting a listener.
+
+Schemas support named/nested/recursive structs, pointers/nullability, string-keyed maps and slices; component names include a stable package hash. Input requiredness follows validation, output requiredness follows JSON omission. Anonymous embedded fields, byte slices, non-string map keys, custom JSON encodings and unsupported JSON tag options require explicit DTOs. Validation tags beyond those listed may impose constraints not projected into OpenAPI. The official OpenAPI Initiative 3.1 schema is vendored with its source URL; santhosh-tekuri/jsonschema v6 validates generated documents offline.

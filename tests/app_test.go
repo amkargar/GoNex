@@ -37,7 +37,7 @@ func TestModules(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	for _, path := range []string{"/healthz", "/users", "/demo"} {
+	for _, path := range []string{"/healthz", "/users/1", "/demo"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		if w.Code != 200 {

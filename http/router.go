@@ -6,12 +6,14 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/amkargar/gonex/openapi"
 	"github.com/gin-gonic/gin"
 )
 
 type Route struct {
 	Method, Path string
 	Handlers     []gin.HandlerFunc
+	Contract     *openapi.Contract
 }
 
 // Build validates the complete route set before exposing a router.

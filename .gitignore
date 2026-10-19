@@ -1,0 +1,6 @@
+*.exe
+*.db
+*.db-shm
+*.db-wal
+.env
+/dist/

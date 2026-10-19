@@ -11,6 +11,7 @@ import (
 
 	"github.com/amkargar/gonex/config"
 	transport "github.com/amkargar/gonex/http"
+	"github.com/amkargar/gonex/openapi"
 	"github.com/gin-gonic/gin"
 )
 
@@ -44,8 +45,21 @@ func New(c config.Config) (*App, error) {
 		return nil, err
 	}
 	a := &App{config: c, state: Created, serveErr: make(chan error, 1), done: make(chan struct{})}
-	err = a.registrar.Handle("GET", "/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+	a.registrar.reserved = map[string]bool{}
+	if !c.DisableOpenAPI {
+		a.registrar.reserved["GET /openapi.json"] = true
+		if c.DocsEnabled {
+			a.registrar.reserved["GET /docs"] = true
+		}
+	}
+	err = transport.Register(&a.registrar, transport.Endpoint[transport.NoBody, HealthResponse]{Method: "GET", Path: "/healthz", OperationID: "health", Status: 200, Handler: func(context.Context, transport.NoBody) (HealthResponse, error) {
+		return HealthResponse{Status: "ok"}, nil
+	}})
 	return a, err
+}
+
+type HealthResponse struct {
+	Status string `json:"status"`
 }
 
 func (a *App) State() State    { a.mu.Lock(); defer a.mu.Unlock(); return a.state }
@@ -57,7 +71,7 @@ func (a *App) Register(modules ...Module) error {
 	if a.state != Created && a.state != Registered {
 		return fmt.Errorf("cannot register in state %s", a.state)
 	}
-	r := &Registrar{routes: append([]transport.Route(nil), a.registrar.routes...), resources: append([]Resource(nil), a.registrar.resources...)}
+	r := &Registrar{routes: append([]transport.Route(nil), a.registrar.routes...), resources: append([]Resource(nil), a.registrar.resources...), reserved: a.registrar.reserved}
 	defer func() { r.sealed = true }()
 	for _, m := range modules {
 		if m == nil {
@@ -67,7 +81,7 @@ func (a *App) Register(modules ...Module) error {
 			return fmt.Errorf("register module: %w", err)
 		}
 	}
-	a.registrar = Registrar{routes: r.routes, resources: r.resources}
+	a.registrar = Registrar{routes: r.routes, resources: r.resources, reserved: r.reserved}
 	a.state = Registered
 	return nil
 }
@@ -76,7 +90,45 @@ func (a *App) Register(modules ...Module) error {
 func (a *App) Handler() (http.Handler, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return transport.Build(a.registrar.routes)
+	return a.handler()
+}
+
+func (a *App) handler() (http.Handler, error) {
+	routes := append([]transport.Route(nil), a.registrar.routes...)
+	if !a.config.DisableOpenAPI {
+		contracts := []openapi.Contract{}
+		for _, r := range routes {
+			if r.Contract != nil {
+				contracts = append(contracts, *r.Contract)
+			}
+		}
+		document, err := openapi.Generate(contracts)
+		if err != nil {
+			return nil, err
+		}
+		if err = openapi.Validate(document); err != nil {
+			return nil, fmt.Errorf("validate OpenAPI: %w", err)
+		}
+		routes = append(routes, transport.Route{Method: "GET", Path: "/openapi.json", Handlers: []gin.HandlerFunc{func(c *gin.Context) { c.Data(200, "application/json", document) }}})
+		if a.config.DocsEnabled {
+			routes = append(routes, transport.Route{Method: "GET", Path: "/docs", Handlers: []gin.HandlerFunc{func(c *gin.Context) {
+				c.Data(200, "text/html; charset=utf-8", []byte(`<!doctype html><html><title>Gonex API</title><h1>Gonex API</h1><p><a href="/openapi.json">OpenAPI 3.1 document</a></p></html>`))
+			}}})
+		}
+	}
+	return transport.Build(routes)
+}
+
+func (a *App) OpenAPI() ([]byte, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	contracts := []openapi.Contract{}
+	for _, r := range a.registrar.routes {
+		if r.Contract != nil {
+			contracts = append(contracts, *r.Contract)
+		}
+	}
+	return openapi.Generate(contracts)
 }
 
 func (a *App) Start(ctx context.Context) error {
@@ -98,7 +150,7 @@ func (a *App) Start(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return fail(err)
 	}
-	h, err := transport.Build(a.registrar.routes)
+	h, err := a.handler()
 	if err != nil {
 		return fail(err)
 	}
