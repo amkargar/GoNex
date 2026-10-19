@@ -22,6 +22,7 @@ goNex is a modular Go framework for typed HTTP APIs and explicit service boundar
 - [Configuration](#configuration)
 - [Development and verification](#development-and-verification)
 - [Compatibility and scope](#compatibility-and-scope)
+- [Project icon](#project-icon)
 - [License](#license)
 
 ## Features
@@ -163,6 +164,14 @@ Implementation reports: [0](docs/phases/0.md) · [1](docs/phases/1.md) · [2](do
 Pin framework and contracts versions. HTTP adapters and Protobuf packages have independent API majors; compare exported contracts against reviewed baselines before upgrading. Generators preserve handwritten files and reject conflicts in tool-owned registries. See [upgrade policy](docs/upgrade.md).
 
 Current limits include static service targets, cooperative cancellation, conservative compatibility checks, manual business mappings and in-process metrics. Streaming trace propagation, an external tracing exporter, brokers, an admin panel and advanced discovery are outside the current implementation.
+
+## Project icon
+
+![goNex duck icon](docs/assets/icons/gonex-192.png)
+
+Download the icon: [512px PNG](docs/assets/icons/gonex-512.png) · [192px PNG](docs/assets/icons/gonex-192.png) · [Apple touch icon](docs/assets/icons/apple-touch-icon.png) · [32px PNG](docs/assets/icons/favicon-32x32.png) · [16px PNG](docs/assets/icons/favicon-16x16.png) · [ICO](docs/assets/icons/favicon.ico).
+
+Use the 512px PNG when configuring a GitHub user or organization avatar. Adding an icon to this README does not set a repository avatar. Repository link previews are configured separately under **Settings → General → Social preview**; see [GitHub's social preview guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/customizing-your-repositorys-social-media-preview).
 
 ## License
 
