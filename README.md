@@ -1,19 +1,11 @@
-<p align="center">
-  <img src="docs/assets/gonex-duck.webp" alt="goNex duck mascot" width="210" align="middle">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/gonex-wordmark-dark.svg">
-    <img src="docs/assets/gonex-wordmark-light.svg" alt="goNex" width="430" align="middle">
-  </picture>
-</p>
+![goNex — modular Go framework](docs/assets/gonex-header.svg)
 
 ---
 
-<p>
-  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.27.1-00ADD8?style=flat&amp;logo=go&amp;logoColor=white" alt="Go 1.27.1"></a>
-  <a href="docs/architecture.md#dependencies"><img src="https://img.shields.io/badge/dependencies-10%20direct-informational?style=flat" alt="Dependencies: 10 direct"></a>
-  <a href="https://github.com/amkargar/gonex/actions/workflows/test.yml"><img src="https://github.com/amkargar/gonex/actions/workflows/test.yml/badge.svg" alt="CI status"></a>
-  <a href="#license"><img src="https://img.shields.io/badge/license-BSD--3--Clause%20planned-blue?style=flat" alt="Planned license: BSD-3-Clause"></a>
-</p>
+[![Go 1.27.1](https://img.shields.io/badge/Go-1.27.1-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev/)
+[![Dependencies: 10 direct](https://img.shields.io/badge/dependencies-10%20direct-informational?style=flat)](docs/architecture.md#dependencies)
+[![CI status](https://github.com/amkargar/gonex/actions/workflows/test.yml/badge.svg)](https://github.com/amkargar/gonex/actions/workflows/test.yml)
+[![Planned license: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause%20planned-blue?style=flat)](#license)
 
 goNex is a modular Go framework for typed HTTP APIs and explicit service boundaries. It combines Gin routing, typed request/response contracts and explicit module registration. Keep business services in plain Go, then add HTTP, persistence or gRPC adapters where you need them. The application owns startup, readiness and graceful shutdown; the CLI scaffolds projects without scanning source at runtime.
 
