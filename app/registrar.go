@@ -1,0 +1,38 @@
+package app
+
+import (
+	"fmt"
+	transport "github.com/amkargar/gonex/http"
+	"github.com/gin-gonic/gin"
+	"strings"
+)
+
+type Registrar struct {
+	routes    []transport.Route
+	resources []Resource
+	sealed    bool
+}
+
+func (r *Registrar) Handle(method, path string, handlers ...gin.HandlerFunc) error {
+	if r.sealed {
+		return fmt.Errorf("registration is closed")
+	}
+	candidate := transport.Route{Method: strings.ToUpper(method), Path: path, Handlers: append([]gin.HandlerFunc(nil), handlers...)}
+	routes := append(append([]transport.Route(nil), r.routes...), candidate)
+	if _, err := transport.Build(routes); err != nil {
+		return err
+	}
+	r.routes = routes
+	return nil
+}
+
+func (r *Registrar) Manage(resource Resource) error {
+	if r.sealed {
+		return fmt.Errorf("registration is closed")
+	}
+	if resource == nil {
+		return fmt.Errorf("nil resource")
+	}
+	r.resources = append(r.resources, resource)
+	return nil
+}
