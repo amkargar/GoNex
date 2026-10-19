@@ -224,6 +224,16 @@
               }
             },
             "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
           }
         },
         "summary": "Create a user",
@@ -298,6 +308,16 @@
             "description": "Error"
           },
           "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
             "content": {
               "application/json": {
                 "schema": {

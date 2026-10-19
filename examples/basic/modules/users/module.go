@@ -6,10 +6,14 @@ import (
 	usershttp "github.com/amkargar/gonex/examples/basic/modules/users/http"
 )
 
-type Module struct{}
+type Module struct{ Repository Repository }
 
-func (Module) Register(r *app.Registrar) error {
-	s := NewService()
+func (m Module) Register(r *app.Registrar) error {
+	repo := m.Repository
+	if repo == nil {
+		repo = NewMemoryRepository()
+	}
+	s := NewService(repo)
 	mapUser := func(u User) usershttp.UserResponse {
 		return usershttp.UserResponse{ID: u.ID, Name: u.Name, Email: u.Email}
 	}
