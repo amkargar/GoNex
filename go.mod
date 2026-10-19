@@ -3,11 +3,14 @@ module github.com/amkargar/gonex
 go 1.27.1
 
 require (
+	github.com/bufbuild/protocompile v0.14.1
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/ncruces/go-sqlite3/gormlite v0.34.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	golang.org/x/mod v0.34.0
+	google.golang.org/grpc v1.78.0
+	google.golang.org/protobuf v1.36.10
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 )
@@ -50,5 +53,5 @@ require (
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
-	google.golang.org/protobuf v1.36.10 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251029180050-ab9386a59fda // indirect
 )

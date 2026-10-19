@@ -176,6 +176,8 @@ func (c invocation) execute(args []string) error {
 		return c.plan(p, *dry)
 	case "db":
 		return c.database(args[1:])
+	case "grpc":
+		return c.grpc(args[1:])
 	default:
 		return fmt.Errorf("unknown command %q; run gonex --help", args[0])
 	}

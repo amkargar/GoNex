@@ -1,0 +1,166 @@
+// Package contracts compiles Protobuf with Buf's compiler and official pinned Go plugins.
+package contracts
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"github.com/amkargar/gonex/internal/scaffold"
+	"github.com/bufbuild/protocompile"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/pluginpb"
+	"io/fs"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+const GoPlugin = "google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10"
+const GRPCPlugin = "google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.0"
+
+func Compile(ctx context.Context, root string) (*descriptorpb.FileDescriptorSet, []string, error) {
+	var names []string
+	dir := filepath.Join(root, "proto")
+	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("symlink contracts are not supported")
+		}
+		if !entry.IsDir() && strings.HasSuffix(path, ".proto") {
+			rel, e := filepath.Rel(dir, path)
+			if e != nil {
+				return e
+			}
+			names = append(names, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	sort.Strings(names)
+	if len(names) == 0 {
+		return nil, nil, fmt.Errorf("no versioned .proto files in contracts/proto")
+	}
+	compiler := protocompile.Compiler{Resolver: protocompile.WithStandardImports(&protocompile.SourceResolver{ImportPaths: []string{dir}}), SourceInfoMode: protocompile.SourceInfoStandard}
+	files, err := compiler.Compile(ctx, names...)
+	if err != nil {
+		return nil, nil, err
+	}
+	set := &descriptorpb.FileDescriptorSet{}
+	seen := map[string]bool{}
+	var add func(protoreflect.FileDescriptor)
+	add = func(file protoreflect.FileDescriptor) {
+		if seen[file.Path()] {
+			return
+		}
+		seen[file.Path()] = true
+		imports := file.Imports()
+		for i := 0; i < imports.Len(); i++ {
+			add(imports.Get(i).FileDescriptor)
+		}
+		set.File = append(set.File, protodesc.ToFileDescriptorProto(file))
+	}
+	for _, file := range files {
+		parts := strings.Split(string(file.Package()), ".")
+		if len(parts) < 2 || !versioned(parts[len(parts)-1]) {
+			return nil, nil, fmt.Errorf("protobuf package %s must end in a major version", file.Package())
+		}
+		if file.Options().(*descriptorpb.FileOptions).GetGoPackage() == "" {
+			return nil, nil, fmt.Errorf("go_package is required")
+		}
+		add(file)
+	}
+	return set, names, nil
+}
+func versioned(v string) bool {
+	if len(v) < 2 || v[0] != 'v' || v[1] == '0' {
+		return false
+	}
+	for _, r := range v[1:] {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// Generate returns a filesystem plan; .proto and handwritten files are never outputs.
+func Generate(ctx context.Context, root string, dry bool) (*scaffold.Plan, error) {
+	set, names, err := Compile(ctx, root)
+	if err != nil {
+		return nil, err
+	}
+	if baseline, e := os.ReadFile(filepath.Join(root, "baseline.binpb")); e == nil {
+		old := &descriptorpb.FileDescriptorSet{}
+		if e = proto.Unmarshal(baseline, old); e != nil {
+			return nil, e
+		}
+		if e = Compatible(old, set); e != nil {
+			return nil, e
+		}
+	} else if !os.IsNotExist(e) {
+		return nil, e
+	}
+	p := &scaffold.Plan{Root: root}
+	for _, plugin := range []string{GoPlugin, GRPCPlugin} {
+		request := &pluginpb.CodeGeneratorRequest{FileToGenerate: names, ProtoFile: set.File, Parameter: proto.String("paths=source_relative")}
+		data, err := proto.Marshal(request)
+		if err != nil {
+			return nil, err
+		}
+		if dry {
+			continue
+		}
+		cmd := exec.CommandContext(ctx, "go", "run", plugin)
+		cmd.Dir = root
+		cmd.Stdin = bytes.NewReader(data)
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		output, err := cmd.Output()
+		if err != nil {
+			return nil, fmt.Errorf("run pinned plugin %s: %w: %s", plugin, err, stderr.String())
+		}
+		response := &pluginpb.CodeGeneratorResponse{}
+		if err = proto.Unmarshal(output, response); err != nil {
+			return nil, err
+		}
+		if response.GetError() != "" {
+			return nil, fmt.Errorf("plugin: %s", response.GetError())
+		}
+		for _, file := range response.File {
+			path := filepath.Join("gen", "go", filepath.FromSlash(file.GetName()))
+			if err = generated(p, path, []byte(file.GetContent())); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if !dry {
+		data, err := proto.MarshalOptions{Deterministic: true}.Marshal(set)
+		if err != nil {
+			return nil, err
+		}
+		if err = generated(p, "schema.binpb", data); err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
+}
+func generated(p *scaffold.Plan, path string, data []byte) error {
+	before, err := os.ReadFile(filepath.Join(p.Root, path))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err == nil && strings.HasSuffix(path, ".go") && !bytes.Contains(before, []byte("Code generated by protoc-gen-go")) {
+		return fmt.Errorf("refusing handwritten generated-code destination %s", path)
+	}
+	p.Changes = append(p.Changes, scaffold.Change{Path: path, Data: data, Before: before, Update: err == nil})
+	return nil
+}

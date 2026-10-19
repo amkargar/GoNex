@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package identity.v1;
+
+option go_package = "github.com/amkargar/gonex/contracts/gen/go/identity/v1;identityv1";
+
+// IdentityService reads public user identity information.
+service IdentityService {
+  // GetUser returns a user or NOT_FOUND.
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message GetUserResponse {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+}

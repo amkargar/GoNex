@@ -7,6 +7,7 @@ import (
 )
 
 type Config struct {
+	DisableHTTP                                             bool
 	DisableOpenAPI                                          bool
 	DocsEnabled                                             bool
 	Address                                                 string

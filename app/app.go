@@ -173,6 +173,24 @@ func (a *App) Start(ctx context.Context) error {
 		if err = r.Start(ctx); err != nil {
 			return fail(fmt.Errorf("start resource: %w", err))
 		}
+		if source, ok := r.(interface{ Errors() <-chan error }); ok {
+			go func() {
+				select {
+				case err, open := <-source.Errors():
+					if open && err != nil {
+						select {
+						case a.serveErr <- err:
+						default:
+						}
+					}
+				case <-a.done:
+				}
+			}()
+		}
+	}
+	if a.config.DisableHTTP {
+		a.state = Running
+		return nil
 	}
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", a.config.Address)
 	if err != nil {
