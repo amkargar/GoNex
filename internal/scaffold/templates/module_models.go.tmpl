@@ -1,0 +1,4 @@
+package {{.Name}}
+
+type record struct{ID int `gorm:"primaryKey"`;Message string}
+func(record)TableName()string{return "{{.Name}}"}

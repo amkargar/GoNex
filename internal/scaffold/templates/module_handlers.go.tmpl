@@ -1,0 +1,6 @@
+package adapter
+
+import "context"
+
+type Handler struct{message func(context.Context)(string,error)}
+func(h Handler) Handle(ctx context.Context,_ Request)(Response,error){message,err:=h.message(ctx);return Response{Message:message},err}

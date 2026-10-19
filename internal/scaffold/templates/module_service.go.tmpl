@@ -1,0 +1,9 @@
+package {{.Name}}
+
+import "context"
+
+type Service struct{ {{if .DB}}store Store{{end}} }
+func NewService({{if .DB}}store Store{{end}})*Service{return &Service{ {{if .DB}}store:store{{end}} }}
+func(s *Service) Message(ctx context.Context)(string,error){
+ {{if .DB}}return s.store.Message(ctx){{else}}return "{{.Name}}",ctx.Err(){{end}}
+}

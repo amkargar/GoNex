@@ -1,0 +1,18 @@
+package {{.Name}}
+
+import (
+ "{{.Framework}}/app"
+ {{if .DB}}"os"
+ "{{.Framework}}/orm"{{end}}
+)
+
+type Module struct{}
+func(Module) Register(r *app.Registrar)error{
+ {{if .DB}}
+ dialect:=os.Getenv("DATABASE_DIALECT");if dialect==""{dialect="sqlite"}
+ db,err:=orm.New(orm.Options{Dialect:dialect,DSNEnv:"DATABASE_URL"});if err!=nil{return err}
+ if err=r.Manage(db);err!=nil{return err}
+ {{if .HTTP}}s:=NewService(GORMStore{Database:db}){{end}}
+ {{else}}{{if .HTTP}}s:=NewService(){{end}}{{end}}
+ {{if .HTTP}}return registerHTTP(r,s){{else}}return nil{{end}}
+}

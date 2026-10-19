@@ -1,0 +1,6 @@
+package {{.Name}}
+
+import "context"
+
+// Store contains only the operation used by Service.
+type Store interface{Message(context.Context)(string,error)}

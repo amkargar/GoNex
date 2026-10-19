@@ -1,0 +1,8 @@
+package config
+
+import (
+ "os"
+ "{{.Framework}}/config"
+)
+
+func Load()config.Config{return config.Config{Address:os.Getenv("HTTP_ADDRESS"),DisableOpenAPI:os.Getenv("GONEX_DISABLE_OPENAPI")=="1"}}

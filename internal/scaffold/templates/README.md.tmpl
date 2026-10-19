@@ -1,0 +1,14 @@
+# {{.Project}}
+
+Requires Go 1.27.1 and Gonex {{.Version}}. Dependencies must be available through your Go module proxy; unpublished development versions require an explicit local workspace/dependency override supplied by the developer.
+
+```sh
+go mod tidy
+gonex create module users
+gonex check
+gonex run
+```
+
+HTTP defaults to 127.0.0.1:8080. GET /healthz returns {"status":"ok"}; GET /openapi.json exports OpenAPI 3.1. Set HTTP_ADDRESS to override. Ctrl+C stops gracefully. Set GONEX_DISABLE_OPENAPI=1 to disable the public document.
+
+Modules live in modules/, HTTP schemas in http/schemas.go. Business services use plain Go dependencies. Generated registries and .gonex.json belong to Gonex; other files are yours. All generators support --dry-run and refuse overwrites. Persistence is opt-in with --db; configure DATABASE_URL and explicitly run gonex db migrate before serving.

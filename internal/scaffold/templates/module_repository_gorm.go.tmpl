@@ -1,0 +1,17 @@
+package {{.Name}}
+
+import (
+ "context"
+ "errors"
+ apperrors "{{.Framework}}/errors"
+ "{{.Framework}}/orm"
+ "gorm.io/gorm"
+)
+
+type GORMStore struct{Database *orm.Database}
+func(s GORMStore)Message(ctx context.Context)(string,error){
+ db,err:=s.Database.DB();if err!=nil{return "",err};var row record
+ err=db.WithContext(ctx).First(&row,"id = ?",1).Error
+ if errors.Is(err,gorm.ErrRecordNotFound){return "",apperrors.New(apperrors.NotFound,"message not found")}
+ if err!=nil{return "",apperrors.New(apperrors.Unavailable,"database unavailable")};return row.Message,nil
+}

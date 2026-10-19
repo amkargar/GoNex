@@ -1,7 +1,7 @@
 package main
 
-import "fmt"
+import "github.com/amkargar/gonex/internal/cli"
 
 func main() {
-	fmt.Println("Gonex: framework implementation in progress; see README.md")
+	cli.Main()
 }
