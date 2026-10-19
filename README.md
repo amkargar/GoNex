@@ -1,26 +1,21 @@
 <p align="center">
-  <img src="docs/assets/gonex-duck.webp" alt="goNex duck mascot" width="280">
+  <img src="docs/assets/gonex-duck.webp" alt="goNex duck mascot" width="210" align="middle">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/gonex-wordmark-dark.svg">
+    <img src="docs/assets/gonex-wordmark-light.svg" alt="goNex" width="430" align="middle">
+  </picture>
 </p>
 
-<h1 align="center">goNex</h1>
+---
 
-<p align="center">A modular Go framework for typed HTTP APIs and explicit service boundaries.</p>
-
-<p align="center">
+<p>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.27.1-00ADD8?style=flat&amp;logo=go&amp;logoColor=white" alt="Go 1.27.1"></a>
   <a href="docs/architecture.md#dependencies"><img src="https://img.shields.io/badge/dependencies-10%20direct-informational?style=flat" alt="Dependencies: 10 direct"></a>
   <a href="https://github.com/amkargar/gonex/actions/workflows/test.yml"><img src="https://github.com/amkargar/gonex/actions/workflows/test.yml/badge.svg" alt="CI status"></a>
   <a href="#license"><img src="https://img.shields.io/badge/license-BSD--3--Clause%20planned-blue?style=flat" alt="Planned license: BSD-3-Clause"></a>
 </p>
 
-<p align="center">
-  <a href="#quick-start">Quick start</a> ·
-  <a href="docs/README.md">Documentation</a> ·
-  <a href="examples/microservices/README.md">Examples</a> ·
-  <a href="CHANGELOG.md">Changelog</a>
-</p>
-
-goNex combines Gin routing, typed request/response contracts and explicit module registration. Keep business services in plain Go, then add HTTP, persistence or gRPC adapters where you need them. The application owns startup, readiness and graceful shutdown; the CLI scaffolds projects without scanning source at runtime.
+goNex is a modular Go framework for typed HTTP APIs and explicit service boundaries. It combines Gin routing, typed request/response contracts and explicit module registration. Keep business services in plain Go, then add HTTP, persistence or gRPC adapters where you need them. The application owns startup, readiness and graceful shutdown; the CLI scaffolds projects without scanning source at runtime.
 
 **Development status:** phases 0–8 have implementation commits. Local checks pass; hosted CI, Linux race tests and live PostgreSQL verification remain pending. No release has been published. See the [verification record](docs/phases/8.md) and [release policy](docs/release.md).
 
