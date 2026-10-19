@@ -1,4 +1,6 @@
-![goNex — modular Go framework](docs/assets/gonex-header.svg)
+<p align="center">
+  <img src="docs/assets/gonex-header.svg" alt="goNex — modular Go framework" width="760">
+</p>
 
 ---
 
