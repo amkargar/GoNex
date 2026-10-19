@@ -1,6 +1,19 @@
 # Release and support policy
 
+[Project home](../README.md) · [Documentation index](README.md)
+
+## Contents
+
+- [Current support status](#current-support-status)
+- [Release checklist](#release-checklist)
+- [Maintenance and security reports](#maintenance-and-security-reports)
+- [Known limits and future scope](#known-limits-and-future-scope)
+
+## Current support status
+
 This checkout is not a published release. Local Windows/amd64 verification is recorded in the phase reports. Linux/Windows Go 1.27.1 and latest 1.27 patch are configured CI targets; successful hosted runs are required before claiming that support matrix is verified. Other Go releases and operating systems are unverified. Release builds target Linux, Windows and macOS on amd64/arm64; cross-building alone does not prove runtime support.
+
+## Release checklist
 
 Before a release:
 
@@ -11,6 +24,10 @@ Before a release:
 5. Tag only the reviewed commit. The release workflow reruns reusable test/contracts gates, cross-builds the CLI with an embedded version and uploads checksummed artifacts. It does not publish a GitHub release or push tags.
 6. Inspect artifacts and hosted results before separately authorizing publication. Record the actual support matrix and release notes.
 
+## Maintenance and security reports
+
 Only the latest published patch in the active release line is intended to receive fixes; there are no published supported releases yet. Security reports should use a private reporting channel established by the repository owner before publication; do not place credentials or exploit details in public issues. See [security configuration](security.md).
+
+## Known limits and future scope
 
 Known limits: static service targets, cooperative cancellation, additive migrations without automatic rollback, conservative compatibility checks, no automatic business mapping, no distributed tracing exporter or streaming trace propagation. Brokers, an admin panel and advanced discovery remain future work.

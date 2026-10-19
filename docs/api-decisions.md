@@ -1,16 +1,50 @@
 # API decisions
 
-Module path: `github.com/amkargar/gonex`. Toolchain: Go 1.27.1, the installed repository baseline. Gin 1.12.0 will be pinned when Phase 1 introduces it.
+[Project home](../README.md) · [Documentation index](README.md)
 
-The following are frozen contracts for Phase 1, not implemented APIs in Phase 0:
+These decisions began as the phase 0 contract and now describe the implemented application API. Historical results remain in the [phase reports](README.md#implementation-record).
+
+## Contents
+
+- [Module and toolchain](#module-and-toolchain)
+- [Construction and registration](#construction-and-registration)
+- [Routing and contracts](#routing-and-contracts)
+- [Resource ownership](#resource-ownership)
+- [Lifecycle guarantees](#lifecycle-guarantees)
+
+## Module and toolchain
+
+The Go module is `github.com/amkargar/gonex`; the product name is goNex. The repository baseline is Go 1.27.1. Exact dependency versions are pinned in [go.mod](../go.mod). See [release policy](release.md) for configured and verified platforms.
+
+## Construction and registration
 
 - `gonex.New(config.Config) (*app.App, error)` validates settings without binding ports.
-- `Module.Register(*Registrar) error`; `App.Register(...Module) error` registers explicitly in argument order, atomically per call.
-- `Registrar.Handle(method, path string, handlers ...gin.HandlerFunc) error` registers full paths. Middleware is passed in order with each route; no mutable global groups.
-- Route identity is `(uppercase method, full path)`. Duplicate and incompatible wildcard routes fail before serving. `/healthz` is owned by the runtime.
-- `Registrar.Manage(Resource) error`, where Resource has `Start(context.Context) error` and `Close(context.Context) error`, provides explicit resource ownership.
-- `App.Start(context.Context) error` starts resources and binds HTTP synchronously. `App.Run(context.Context) error` waits for cancellation or server failure and shuts down. `App.Shutdown(context.Context) error` is idempotent. A stopped instance cannot restart.
-- States: created, registered, starting, running, stopping, stopped. Registration freezes at startup. A registration failure leaves the application unchanged.
-- Configuration supplies address, read/write/idle and shutdown timeouts. Zero values get documented defaults; negative durations fail.
+- `Module.Register(*Registrar) error` declares a module's routes and resources.
+- `App.Register(...Module) error` registers explicitly in argument order, atomically per call.
+- Registration freezes at startup. A failed registration call leaves the application unchanged.
+- `Registrar.Handle(method, path string, handlers ...gin.HandlerFunc) error` is a raw Gin escape hatch. Use typed HTTP registration for public contracts.
 
-Future phases choose their concrete public APIs when introduced; no placeholder packages are created.
+## Routing and contracts
+
+Route identity is the uppercase method plus full path. Duplicate and incompatible wildcard routes fail before serving. Runtime health/readiness and enabled document paths reject conflicting registrations.
+
+`http.Register` builds a typed endpoint contract. Request origins, supported validation constraints and schema projection are checked together. Contracts detach mutable metadata at registration. Raw Gin routes are not included in OpenAPI.
+
+HTTP versions are explicit adapter packages. gRPC remains optional, with versioned Protobuf packages and independently managed servers/clients. See [HTTP contracts](http-openapi.md) and [gRPC](grpc.md).
+
+## Resource ownership
+
+`Registrar.Manage(Resource) error` owns resources implementing `Start(context.Context) error` and `Close(context.Context) error`. Registration order determines startup order; close runs in reverse. Dependencies register before their consumers. An optional Errors channel reports asynchronous failure to App.Run.
+
+`Registrar.Check(name, func(context.Context) error)` adds a named dependency readiness check. Resources may also implement `Ready(context.Context) error`. Application callbacks must honor context cancellation.
+
+## Lifecycle guarantees
+
+| API | Behavior |
+|---|---|
+| `App.Start(ctx)` | Starts managed resources and binds the HTTP listener synchronously |
+| `App.Run(ctx)` | Starts, waits for cancellation/failure and shuts down within the configured budget |
+| `App.Shutdown(ctx)` | Drains HTTP and closes resources; repeated calls are safe |
+| `App.Ready(ctx)` | Checks running state and registered dependency readiness |
+
+States are created, registered, starting, running, stopping and stopped. A stopped instance cannot restart. Configuration includes address, middleware, exposure switches and read/write/idle/shutdown timeouts. Zero durations use defaults; negative values fail. See [modules](modules.md) and [operations](operations.md).
