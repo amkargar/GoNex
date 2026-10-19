@@ -5,7 +5,7 @@
 [![Go 1.27.1](https://img.shields.io/badge/Go-1.27.1-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev/)
 [![Dependencies: 10 direct](https://img.shields.io/badge/dependencies-10%20direct-informational?style=flat)](docs/architecture.md#dependencies)
 [![CI status](https://github.com/amkargar/gonex/actions/workflows/test.yml/badge.svg)](https://github.com/amkargar/gonex/actions/workflows/test.yml)
-[![Planned license: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause%20planned-blue?style=flat)](#license)
+[![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue?style=flat)](LICENSE)
 
 goNex is a modular Go framework for typed HTTP APIs and explicit service boundaries. It combines Gin routing, typed request/response contracts and explicit module registration. Keep business services in plain Go, then add HTTP, persistence or gRPC adapters where you need them. The application owns startup, readiness and graceful shutdown; the CLI scaffolds projects without scanning source at runtime.
 
@@ -166,4 +166,4 @@ Current limits include static service targets, cooperative cancellation, conserv
 
 ## License
 
-The intended license is **BSD 3-Clause (`BSD-3-Clause`)**. The repository owner will add the license file; it is pending. The badge records that intent and does not grant a license.
+goNex is licensed under the **BSD 3-Clause License (`BSD-3-Clause`)**. See [LICENSE](LICENSE) for the full terms.

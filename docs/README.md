@@ -77,4 +77,4 @@ Phase reports are historical engineering records; use the guides above for curre
 | 7 | [Independent services and clients](phases/7.md) |
 | 8 | [Operational hardening and release gates](phases/8.md) |
 
-The intended project license is BSD 3-Clause. The owner will add the license file; see the [license status](../README.md#license).
+goNex is licensed under the [BSD 3-Clause License](../LICENSE).
