@@ -20,13 +20,17 @@ import (
 )
 
 const help = `gonex v0.1.0-dev
-  new NAME --module IMPORT_PATH [--framework-version VERSION] [--dry-run]
-  create module NAME [--transport http|none] [--db] [--dry-run]
+  new NAME --module IMPORT_PATH [--arch monolith|microservices] [--dry-run]
+  create module NAME [--service NAME] [--transport http|none|grpc|http,grpc] [--db] [--dry-run]
+  create service NAME [--dry-run]
+  create client PROVIDER --service CONSUMER --module MODULE [--version v1] [--dry-run]
+  module enable NAME --grpc [--service NAME] [--dry-run]
   module version NAME --http vN [--policy preserve|replace] [--prefix PATH] [--dry-run]
-  run | build | check
+  run | build | check [--service NAME]
   openapi generate [--out openapi.json] [--dry-run]
   openapi validate [--file openapi.json]
   db migrate | db status [--dry-run]
+  grpc generate [--dry-run] | grpc check
 Generators refuse handwritten overwrites. Run project commands from its root.
 `
 
@@ -102,6 +106,7 @@ func (c invocation) execute(args []string) error {
 		f := c.flags("new")
 		module := f.String("module", "", "Go module path")
 		version := f.String("framework-version", scaffold.Version, "framework module version")
+		arch := f.String("arch", "monolith", "monolith or microservices")
 		dry := f.Bool("dry-run", false, "show plan only")
 		if err := f.Parse(args[2:]); err != nil {
 			return err
@@ -110,36 +115,31 @@ func (c invocation) execute(args []string) error {
 			return fmt.Errorf("unexpected arguments")
 		}
 		p, err := scaffold.New(filepath.Join(c.dir, args[1]), *module, *version)
+		if *arch == "microservices" {
+			p, err = scaffold.NewMicroservices(filepath.Join(c.dir, args[1]), *module, *version)
+		} else if *arch != "monolith" {
+			return fmt.Errorf("unknown architecture %s", *arch)
+		}
 		if err != nil {
 			return err
 		}
 		return c.plan(p, *dry)
 	case "create":
-		if len(args) < 3 || args[1] != "module" {
-			return fmt.Errorf("usage: gonex create module NAME")
-		}
-		f := c.flags("create module")
-		transport := f.String("transport", "http", "http or none")
-		db := f.Bool("db", false, "generate GORM persistence")
-		dry := f.Bool("dry-run", false, "show plan only")
-		if err := f.Parse(args[3:]); err != nil {
+		return c.create(args[1:])
+	case "run", "build", "check":
+		f := c.flags(args[0])
+		service := f.String("service", "", "workspace service")
+		if err := f.Parse(args[1:]); err != nil {
 			return err
 		}
 		if f.NArg() != 0 {
 			return fmt.Errorf("unexpected arguments")
 		}
-		p, err := scaffold.CreateModule(c.dir, args[2], *transport, *db)
+		root, err := scaffold.ServiceRoot(c.dir, *service)
 		if err != nil {
 			return err
 		}
-		return c.plan(p, *dry)
-	case "run", "build", "check":
-		if len(args) != 1 {
-			return fmt.Errorf("unexpected arguments")
-		}
-		if _, _, err := scaffold.Load(c.dir); err != nil {
-			return err
-		}
+		c.dir = root
 		if args[0] == "run" {
 			return c.goTool("run", ".")
 		}
@@ -155,10 +155,32 @@ func (c invocation) execute(args []string) error {
 	case "openapi":
 		return c.openapi(args[1:])
 	case "module":
+		if len(args) >= 3 && args[1] == "enable" {
+			f := c.flags("module enable")
+			enabled := f.Bool("grpc", false, "enable gRPC")
+			service := f.String("service", "", "workspace service")
+			dry := f.Bool("dry-run", false, "show plan only")
+			if err := f.Parse(args[3:]); err != nil {
+				return err
+			}
+			if !*enabled || f.NArg() != 0 {
+				return fmt.Errorf("usage: gonex module enable NAME --grpc")
+			}
+			root, err := scaffold.ServiceRoot(c.dir, *service)
+			if err != nil {
+				return err
+			}
+			p, err := scaffold.EnableGRPC(root, args[2])
+			if err != nil {
+				return err
+			}
+			return c.completePlan(p, *dry)
+		}
 		if len(args) < 3 || args[1] != "version" {
 			return fmt.Errorf("usage: gonex module version NAME --http v1 [--policy preserve|replace]")
 		}
 		f := c.flags("module version")
+		service := f.String("service", "", "workspace service")
 		version := f.String("http", "", "HTTP version")
 		policy := f.String("policy", "preserve", "legacy route policy")
 		prefix := f.String("prefix", "", "version URL prefix")
@@ -169,11 +191,15 @@ func (c invocation) execute(args []string) error {
 		if f.NArg() != 0 {
 			return fmt.Errorf("unexpected arguments")
 		}
-		p, err := scaffold.VersionModule(c.dir, args[2], *version, *policy, *prefix)
+		root, err := scaffold.ServiceRoot(c.dir, *service)
 		if err != nil {
 			return err
 		}
-		return c.plan(p, *dry)
+		p, err := scaffold.VersionModule(root, args[2], *version, *policy, *prefix)
+		if err != nil {
+			return err
+		}
+		return c.completePlan(p, *dry)
 	case "db":
 		return c.database(args[1:])
 	case "grpc":
@@ -202,6 +228,7 @@ func (c invocation) openapi(args []string) error {
 		return fmt.Errorf("usage: gonex openapi generate|validate")
 	}
 	f := c.flags("openapi")
+	service := f.String("service", "", "workspace service")
 	out := f.String("out", "openapi.json", "output artifact")
 	file := f.String("file", "openapi.json", "document to validate")
 	dry := f.Bool("dry-run", false, "show plan only")
@@ -212,6 +239,13 @@ func (c invocation) openapi(args []string) error {
 		return fmt.Errorf("unexpected arguments")
 	}
 	if args[0] == "validate" {
+		if *service != "" {
+			root, err := scaffold.ServiceRoot(c.dir, *service)
+			if err != nil {
+				return err
+			}
+			c.dir = root
+		}
 		data, err := os.ReadFile(filepath.Join(c.dir, *file))
 		if err != nil {
 			return err
@@ -221,6 +255,11 @@ func (c invocation) openapi(args []string) error {
 	if args[0] != "generate" {
 		return fmt.Errorf("unknown OpenAPI operation")
 	}
+	root, err := scaffold.ServiceRoot(c.dir, *service)
+	if err != nil {
+		return err
+	}
+	c.dir = root
 	if _, _, err := scaffold.Load(c.dir); err != nil {
 		return err
 	}
@@ -263,6 +302,7 @@ func (c invocation) database(args []string) error {
 		return err
 	}
 	f := c.flags("db")
+	service := f.String("service", "", "workspace service")
 	dry := f.Bool("dry-run", false, "show operation without connecting")
 	if err := f.Parse(args[1:]); err != nil {
 		return err
@@ -274,6 +314,11 @@ func (c invocation) database(args []string) error {
 		fmt.Fprintln(c.out, "db", args[0], "(dry run: no connection or changes)")
 		return nil
 	}
+	root, err := scaffold.ServiceRoot(c.dir, *service)
+	if err != nil {
+		return err
+	}
+	c.dir = root
 	dialect := os.Getenv("DATABASE_DIALECT")
 	if dialect == "" {
 		dialect = "sqlite"

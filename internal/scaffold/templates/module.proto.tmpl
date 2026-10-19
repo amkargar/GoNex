@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package {{.Provider}}.v1;
+option go_package = "{{.Contracts}}/gen/go/{{.Provider}}/v1;{{.Provider}}v1";
+
+service {{.Title}}Service {
+ rpc Get{{.Title}}Message(Get{{.Title}}MessageRequest) returns (Get{{.Title}}MessageResponse);
+}
+message Get{{.Title}}MessageRequest {}
+message Get{{.Title}}MessageResponse { string message = 1; }

@@ -1,0 +1,5 @@
+package adapter
+
+import pb "{{.Contracts}}/gen/go/{{.Provider}}/v1"
+
+func response(message string)*pb.Get{{.Title}}MessageResponse{return &pb.Get{{.Title}}MessageResponse{Message:message}}

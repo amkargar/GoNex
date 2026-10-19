@@ -25,12 +25,21 @@ type Module struct {
 	Prefixes  map[string]string `json:"prefixes,omitempty"`
 }
 type Manifest struct {
+	Architecture     string            `json:"architecture,omitempty"`
+	Service          string            `json:"service,omitempty"`
+	Services         []Service         `json:"services,omitempty"`
+	ContractsModule  string            `json:"contractsModule,omitempty"`
+	ContractsDir     string            `json:"contractsDir,omitempty"`
+	GRPCAddress      string            `json:"grpcAddress,omitempty"`
 	Format           int               `json:"format"`
 	Module           string            `json:"module"`
 	FrameworkVersion string            `json:"frameworkVersion"`
 	Modules          []Module          `json:"modules"`
 	Owned            map[string]string `json:"owned"`
 }
+
+func (m Module) HasHTTP() bool { return strings.Contains(m.Transport, "http") }
+func (m Module) HasGRPC() bool { return strings.Contains(m.Transport, "grpc") }
 
 var namePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 

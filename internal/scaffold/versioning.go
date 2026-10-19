@@ -40,7 +40,7 @@ func VersionModule(root, name, version, policy, prefix string) (*Plan, error) {
 		return nil, fmt.Errorf("module %s does not exist", name)
 	}
 	entry := &m.Modules[index]
-	if entry.Transport != "http" {
+	if !entry.HasHTTP() {
 		return nil, fmt.Errorf("module has no HTTP adapter")
 	}
 	for _, v := range entry.Versions {

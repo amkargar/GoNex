@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"github.com/amkargar/gonex/internal/contracts"
+	"github.com/amkargar/gonex/internal/scaffold"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"os"
@@ -22,6 +23,9 @@ func (c invocation) grpc(args []string) error {
 		return fmt.Errorf("unexpected arguments")
 	}
 	root := filepath.Join(c.dir, "contracts")
+	if configured, err := scaffold.ContractsPath(c.dir); err == nil {
+		root = configured
+	}
 	if _, err := os.Stat(filepath.Join(c.dir, "proto")); err == nil {
 		root = c.dir
 	}

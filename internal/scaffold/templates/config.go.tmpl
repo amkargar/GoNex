@@ -5,4 +5,8 @@ import (
  "{{.Framework}}/config"
 )
 
-func Load()config.Config{return config.Config{Address:os.Getenv("HTTP_ADDRESS"),DisableOpenAPI:os.Getenv("GONEX_DISABLE_OPENAPI")=="1"}}
+func Load()config.Config{
+ address:=os.Getenv("HTTP_ADDRESS")
+ {{if .HTTPAddress}}if address==""{address="{{.HTTPAddress}}"}{{end}}
+ return config.Config{Address:address,DisableHTTP:os.Getenv("GONEX_DISABLE_HTTP")=="1",DisableOpenAPI:os.Getenv("GONEX_DISABLE_OPENAPI")=="1"}
+}

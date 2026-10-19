@@ -6,13 +6,18 @@ import (
  "{{.Framework}}/orm"{{end}}
 )
 
-type Module struct{}
-func(Module) Register(r *app.Registrar)error{
+type Module struct{Service *Service}
+func(m Module) Register(r *app.Registrar)error{
+ s:=m.Service
+ if s==nil{var err error;s,err=NewModuleService(r);if err!=nil{return err}}
+ {{if .HTTP}}return registerHTTP(r,s){{else}}return nil{{end}}
+}
+
+func NewModuleService(r *app.Registrar)(*Service,error){
  {{if .DB}}
  dialect:=os.Getenv("DATABASE_DIALECT");if dialect==""{dialect="sqlite"}
- db,err:=orm.New(orm.Options{Dialect:dialect,DSNEnv:"DATABASE_URL"});if err!=nil{return err}
- if err=r.Manage(db);err!=nil{return err}
- {{if .HTTP}}s:=NewService(GORMStore{Database:db}){{end}}
- {{else}}{{if .HTTP}}s:=NewService(){{end}}{{end}}
- {{if .HTTP}}return registerHTTP(r,s){{else}}return nil{{end}}
+ db,err:=orm.New(orm.Options{Dialect:dialect,DSNEnv:"DATABASE_URL"});if err!=nil{return nil,err}
+ if err=r.Manage(db);err!=nil{return nil,err}
+ return NewService(GORMStore{Database:db}),nil
+ {{else}}return NewService(),nil{{end}}
 }

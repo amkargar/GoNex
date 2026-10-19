@@ -15,10 +15,11 @@ import (
 var templates embed.FS
 
 type data struct {
-	Project, Name, Framework, Version string
-	HTTP, DB                          bool
-	Transport                         string
-	Modules                           []Module
+	HTTPAddress, GRPCAddress, Title, Provider, Contracts string
+	Project, Name, Framework, Version                    string
+	HTTP, DB                                             bool
+	Transport                                            string
+	Modules                                              []Module
 }
 
 func render(name string, d data) ([]byte, error) {
@@ -76,8 +77,8 @@ func CreateModule(root, name, transport string, db bool) (*Plan, error) {
 	if err := ValidName(name); err != nil {
 		return nil, err
 	}
-	if transport != "http" && transport != "none" {
-		return nil, fmt.Errorf("transport must be http or none until gRPC is enabled")
+	if transport != "http" && transport != "none" && transport != "grpc" && transport != "http,grpc" {
+		return nil, fmt.Errorf("transport must be http, none, grpc or http,grpc")
 	}
 	m, old, err := Load(root)
 	if err != nil {
@@ -89,7 +90,7 @@ func CreateModule(root, name, transport string, db bool) (*Plan, error) {
 		}
 	}
 	p := &Plan{Root: root}
-	d := data{Project: m.Module, Framework: Framework, Version: m.FrameworkVersion, Name: name, HTTP: transport == "http", DB: db, Transport: transport}
+	d := data{Project: m.Module, Framework: Framework, Version: m.FrameworkVersion, Name: name, HTTP: strings.Contains(transport, "http"), DB: db, Transport: transport}
 	files := []string{"module.go", "service.go", "service_test.go"}
 	if d.HTTP {
 		files = append(files, "http/handlers.go", "http/schemas.go", "http/routes.go", "http/openapi.go")
@@ -105,6 +106,11 @@ func CreateModule(root, name, transport string, db bool) (*Plan, error) {
 		p.Changes = append(p.Changes, Change{Path: filepath.Join("modules", name, file), Data: content})
 	}
 	entry := Module{Name: name, Transport: transport, DB: db}
+	if entry.HasGRPC() {
+		if err = addRPC(p, &m, entry); err != nil {
+			return nil, err
+		}
+	}
 	m.Modules = append(m.Modules, entry)
 	sort.Slice(m.Modules, func(i, j int) bool { return m.Modules[i].Name < m.Modules[j].Name })
 	if d.HTTP {
@@ -133,6 +139,11 @@ func CreateModule(root, name, transport string, db bool) (*Plan, error) {
 }
 
 func registry(m Manifest) ([]byte, error) {
+	for _, entry := range m.Modules {
+		if entry.HasGRPC() {
+			return render("registry_rpc_gen.go", data{Project: m.Module, Framework: Framework, Modules: m.Modules, GRPCAddress: m.GRPCAddress})
+		}
+	}
 	return render("registry_gen.go", data{Project: m.Module, Framework: Framework, Modules: m.Modules})
 }
 func httpRegistry(project string, m Module) ([]byte, error) {

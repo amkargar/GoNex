@@ -1,0 +1,12 @@
+package adapter
+
+import (
+ "context"
+ rpc "{{.Framework}}/grpc"
+ pb "{{.Contracts}}/gen/go/{{.Provider}}/v1"
+ "google.golang.org/grpc"
+)
+
+type Server struct{pb.Unimplemented{{.Title}}ServiceServer;Message func(context.Context)(string,error)}
+func(s Server)Get{{.Title}}Message(ctx context.Context,_ *pb.Get{{.Title}}MessageRequest)(*pb.Get{{.Title}}MessageResponse,error){message,err:=s.Message(ctx);if err!=nil{return nil,rpc.ToStatus(err)};return response(message),nil}
+func Register(server *rpc.Server,message func(context.Context)(string,error))error{return server.Register(func(s *grpc.Server)error{pb.Register{{.Title}}ServiceServer(s,Server{Message:message});return nil})}

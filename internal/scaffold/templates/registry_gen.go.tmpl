@@ -3,8 +3,8 @@ package modules
 
 import (
  "{{.Framework}}/app"
- {{range .Modules}}"{{$.Project}}/modules/{{.Name}}"
+ {{range .Modules}}feature_{{.Name}} "{{$.Project}}/modules/{{.Name}}"
  {{end}}
 )
 
-func All()[]app.Module{return []app.Module{ {{range .Modules}}{{.Name}}.Module{},{{end}} }}
+func All()[]app.Module{return []app.Module{ {{range .Modules}}feature_{{.Name}}.Module{},{{end}} }}
