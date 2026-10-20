@@ -37,6 +37,7 @@ func (c Config) Normalize() (Config, error) {
 			return c, err
 		}
 	}
+	c.Logger = c.Logger.With("service", c.Name, "environment", c.Environment)
 	for _, middleware := range c.Middleware {
 		if middleware == nil {
 			return c, fmt.Errorf("nil HTTP middleware")

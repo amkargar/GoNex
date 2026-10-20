@@ -40,6 +40,7 @@ const help = `
   module enable NAME --grpc [--service NAME] [--dry-run]
   module version NAME --http vN [--policy preserve|replace] [--prefix PATH] [--dry-run]
   create module NAME --http-version vN [--dry-run]
+  upgrade --framework-version VERSION [--dry-run]
   run | build | check [--service NAME]
   openapi generate [--out openapi.json] [--http-version vN] [--dry-run]
   openapi validate [--file openapi.json] [--against BASELINE]
@@ -147,6 +148,25 @@ func (c invocation) execute(args []string) error {
 			return err
 		}
 		return c.plan(p, *dry)
+	case "upgrade":
+		f := c.flags("upgrade")
+		version := f.String("framework-version", "", "exact target Go module version")
+		dry := f.Bool("dry-run", false, "show metadata changes only")
+		if err := f.Parse(args[1:]); err != nil {
+			return err
+		}
+		if f.NArg() != 0 || *version == "" {
+			return fmt.Errorf("usage: gonex upgrade --framework-version VERSION [--dry-run]")
+		}
+		plan, err := scaffold.Upgrade(c.dir, *version)
+		if err != nil {
+			return err
+		}
+		if err = c.plan(plan, *dry); err != nil {
+			return err
+		}
+		fmt.Fprintln(c.out, "Review compatibility, run go mod tidy and gonex check; handwritten code and SQL migrations were not migrated.")
+		return nil
 	case "create":
 		return c.create(args[1:])
 	case "run", "build", "check":

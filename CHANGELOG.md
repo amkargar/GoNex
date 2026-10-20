@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Raise the minimum Go patch to 1.27.2 and update reachable-vulnerability fixes in gRPC, pgx, QUIC and x/* dependencies.
+- Add reproducible security/fuzz, public-consumer, real-DB failure/concurrency and performance gates.
+- Harden ambiguous CORS/identity inputs and UTF-8 decoding; detach principal role slices.
+- Add bounded latency histograms, opt-in Prometheus scraping and service/trace correlation.
+- Fix concurrent startup/shutdown cancellation and explicit listener cleanup.
+- Add a standalone pinned Orders API, disposable PostgreSQL/Compose recovery rehearsal and readiness reports.
+
+
 - API-first library/CLI onboarding without cloning the framework.
 - Installed-module version defaults and project-local Go tool dependencies for generated apps/workspaces.
 - Structured slog lifecycle/request logging, bound startup URLs, request IDs and production JSON.

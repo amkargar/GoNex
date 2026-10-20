@@ -37,11 +37,14 @@ type App struct {
 	state       State
 	registrar   Registrar
 	server      *http.Server
+	listener    net.Listener
 	address     string
 	started     []Resource
 	serveErr    chan error
 	done        chan struct{}
 	shutdownErr error
+	startDone   chan struct{}
+	startCancel context.CancelFunc
 }
 
 func New(c config.Config) (*App, error) {
@@ -49,7 +52,7 @@ func New(c config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &App{config: c, state: Created, serveErr: make(chan error, 1), done: make(chan struct{})}
+	a := &App{config: c, state: Created, serveErr: make(chan error, 1), done: make(chan struct{}), startDone: make(chan struct{})}
 	a.registrar.reserved = map[string]bool{}
 	if !c.DisableOpenAPI {
 		a.registrar.reserved["GET /openapi.json"] = true
@@ -169,32 +172,46 @@ func (a *App) OpenAPIVersion(version string) ([]byte, error) {
 
 func (a *App) Start(ctx context.Context) error {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	if a.state != Created && a.state != Registered {
-		return fmt.Errorf("cannot start in state %s", a.state)
+		state := a.state
+		a.mu.Unlock()
+		return fmt.Errorf("cannot start in state %s", state)
 	}
+	startCtx, cancel := context.WithCancel(ctx)
+	a.startCancel = cancel
 	a.state = Starting
 	a.registrar.sealed = true
+	resources := append([]Resource(nil), a.registrar.resources...)
+	a.mu.Unlock()
+	defer close(a.startDone)
 	fail := func(err error) error {
-		cleanup, cancel := context.WithTimeout(context.Background(), a.config.ShutdownTimeout)
-		defer cancel()
-		err = errors.Join(err, a.closeResources(cleanup))
+		cancel()
+		cleanup, stop := context.WithTimeout(context.Background(), a.config.ShutdownTimeout)
+		defer stop()
+		cleanupErr := a.closeResources(cleanup)
+		a.mu.Lock()
+		a.shutdownErr = cleanupErr
 		a.state = Stopped
-		a.config.Logger.ErrorContext(ctx, "server startup failed", "error", err)
 		close(a.done)
-		return err
+		a.mu.Unlock()
+		a.config.Logger.ErrorContext(ctx, "server startup failed", "error", "startup_failed")
+		return errors.Join(err, cleanupErr)
 	}
-	if err := ctx.Err(); err != nil {
+	if err := startCtx.Err(); err != nil {
 		return fail(err)
 	}
+	// Registration is immutable in Starting; callbacks run without the state mutex.
 	h, err := a.handler()
 	if err != nil {
 		return fail(err)
 	}
-	for _, r := range a.registrar.resources {
+	for _, r := range resources {
 		a.started = append(a.started, r)
-		if err = r.Start(ctx); err != nil {
+		if err = r.Start(startCtx); err != nil {
 			return fail(fmt.Errorf("start resource: %w", err))
+		}
+		if err = startCtx.Err(); err != nil {
+			return fail(err)
 		}
 		if source, ok := r.(interface{ Errors() <-chan error }); ok {
 			go func() {
@@ -212,23 +229,32 @@ func (a *App) Start(ctx context.Context) error {
 		}
 	}
 	if a.config.DisableHTTP {
+		a.mu.Lock()
 		a.state = Running
+		a.mu.Unlock()
 		a.logStarted(ctx)
 		return nil
 	}
-	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", a.config.Address)
+	listener, err := (&net.ListenConfig{}).Listen(startCtx, "tcp", a.config.Address)
 	if err != nil {
 		return fail(fmt.Errorf("listen HTTP: %w", err))
 	}
+	server := &http.Server{Handler: h, ReadHeaderTimeout: a.config.ReadTimeout, ReadTimeout: a.config.ReadTimeout, WriteTimeout: a.config.WriteTimeout, IdleTimeout: a.config.IdleTimeout}
+	a.mu.Lock()
 	a.address = listener.Addr().String()
-	a.server = &http.Server{Handler: h, ReadHeaderTimeout: a.config.ReadTimeout, ReadTimeout: a.config.ReadTimeout, WriteTimeout: a.config.WriteTimeout, IdleTimeout: a.config.IdleTimeout}
+	a.server = server
+	a.listener = listener
 	a.state = Running
+	a.mu.Unlock()
 	go func() {
-		err := a.server.Serve(listener)
+		err := server.Serve(listener)
 		if errors.Is(err, http.ErrServerClosed) {
 			err = nil
 		}
-		a.serveErr <- err
+		select {
+		case a.serveErr <- err:
+		default:
+		}
 	}()
 	a.logStarted(ctx)
 	return nil
@@ -247,13 +273,24 @@ func (a *App) Run(ctx context.Context) error {
 	stop, cancel := context.WithTimeout(context.Background(), a.config.ShutdownTimeout)
 	defer cancel()
 	if err != nil {
-		a.config.Logger.ErrorContext(ctx, "server failed", "error", err)
+		a.config.Logger.ErrorContext(ctx, "server failed", "error", "resource_failed")
 	}
 	return errors.Join(err, a.Shutdown(stop))
 }
 
 func (a *App) Shutdown(ctx context.Context) error {
 	a.mu.Lock()
+	if a.state == Starting {
+		cancel, done := a.startCancel, a.startDone
+		a.mu.Unlock()
+		cancel()
+		select {
+		case <-done:
+			return a.Shutdown(ctx)
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 	if a.state == Stopped || a.state == Stopping {
 		done := a.done
 		a.mu.Unlock()
@@ -268,6 +305,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 	}
 	a.state = Stopping
 	server := a.server
+	listener := a.listener
 	a.mu.Unlock()
 	a.config.Logger.InfoContext(ctx, "server stopping")
 	var err error
@@ -277,6 +315,12 @@ func (a *App) Shutdown(ctx context.Context) error {
 			err = errors.Join(err, server.Close())
 		}
 	}
+	if listener != nil {
+		_ = listener.Close()
+	}
+	if a.startCancel != nil {
+		a.startCancel()
+	}
 	err = errors.Join(err, a.closeResources(ctx))
 	a.mu.Lock()
 	a.shutdownErr = err
@@ -284,7 +328,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 	close(a.done)
 	a.mu.Unlock()
 	if err != nil {
-		a.config.Logger.ErrorContext(ctx, "server shutdown failed", "error", err)
+		a.config.Logger.ErrorContext(ctx, "server shutdown failed", "error", "shutdown_failed")
 	} else {
 		a.config.Logger.InfoContext(ctx, "server stopped")
 	}
@@ -307,7 +351,7 @@ func (a *App) logStarted(ctx context.Context) {
 	if a.config.DisableStartupBanner {
 		return
 	}
-	attrs := []any{"name", a.config.Name, "version", buildinfo.Version(), "environment", a.config.Environment}
+	attrs := []any{"name", a.config.Name, "version", buildinfo.Version()}
 	if !a.config.DisableHTTP {
 		host, port, _ := net.SplitHostPort(a.address)
 		if host == "" || host == "0.0.0.0" || host == "::" {

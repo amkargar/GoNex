@@ -1,0 +1,84 @@
+name: Production sample
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  postgres-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: gonex
+          POSTGRES_PASSWORD: disposable_test_only
+          POSTGRES_DB: gonex_sample
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U gonex -d gonex_sample"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      GONEX_REQUIRE_POSTGRES: '1'
+      GONEX_PRODUCTION_TEST_DSN: postgres://gonex:disposable_test_only@127.0.0.1:5432/gonex_sample?sslmode=disable
+      GIN_MODE: release
+      GOWORK: 'off'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: examples/production/go.mod
+          cache-dependency-path: examples/production/go.sum
+      - run: go -C examples/production mod verify
+      - run: go -C examples/production test -race ./... -count=2 -v
+      - run: go -C examples/production vet ./...
+      - run: go -C examples/production build ./...
+      - name: Verify public dependency isolation
+        shell: bash
+        run: |
+          if grep -q '^replace' examples/production/go.mod; then exit 1; fi
+          go -C examples/production list -m -json github.com/amkargar/gonex
+  compose-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Create ephemeral rehearsal configuration
+        shell: bash
+        run: |
+          for key in POSTGRES_PASSWORD GONEX_ADMIN_TOKEN GONEX_READER_TOKEN; do
+            value=$(openssl rand -hex 24)
+            echo "::add-mask::$value"
+            echo "$key=$value" >> "$GITHUB_ENV"
+          done
+      - run: docker compose -f examples/production/deployments/compose.yaml config -q
+      - run: docker compose -f examples/production/deployments/compose.yaml build api
+      - run: docker compose -f examples/production/deployments/compose.yaml up -d
+      - run: python3 examples/production/scripts/e2e.py
+      - name: Rehearse database loss and restoration
+        shell: bash
+        run: |
+          set -euo pipefail
+          compose_file=examples/production/deployments/compose.yaml
+          docker compose -f "$compose_file" stop postgres
+          code=$(curl --max-time 5 -s -o /tmp/readiness-body -w '%{http_code}' http://127.0.0.1:8080/readyz)
+          test "$code" = 503
+          docker compose -f "$compose_file" start postgres
+          for _attempt in $(seq 1 60); do
+            code=$(curl --max-time 3 -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/readyz || true)
+            if [ "$code" = 200 ]; then break; fi
+            sleep 1
+          done
+          test "$code" = 200
+          python3 examples/production/scripts/e2e.py --check-recovery
+      - name: Stop disposable environment
+        if: always()
+        run: docker compose -f examples/production/deployments/compose.yaml down -v --remove-orphans

@@ -11,7 +11,7 @@
   <a href="https://amkargar.github.io/GoNex-website/docs/main/contribute/">Contribute</a>
 </p>
 
-[![Go 1.27.1](https://img.shields.io/badge/Go-1.27.1-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![Go 1.27.2](https://img.shields.io/badge/Go-1.27.2-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![CI status](https://github.com/amkargar/gonex/actions/workflows/test.yml/badge.svg)](https://github.com/amkargar/gonex/actions/workflows/test.yml)
 [![Documentation](https://img.shields.io/badge/docs-gonex-f7d34c)](https://amkargar.github.io/GoNex-website/docs/main/)
 [![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue)](LICENSE)
@@ -33,7 +33,7 @@ Visit the **[Gonex website](https://amkargar.github.io/GoNex-website/)** for an 
 
 ## Get started
 
-Requires **Go 1.27.1**. Install the CLI, then create your own application:
+Requires **Go 1.27.2**. Install the CLI, then create your own application:
 
 ```sh
 go install github.com/amkargar/gonex/cmd/gonex@main
@@ -74,6 +74,10 @@ Modules compose services explicitly. Gin HTTP handlers, optional GORM repositori
 ### Visibility while you build and run
 
 Application startup reports the bound server address. Structured request logs include a request ID, status and duration, with readable development output and JSON in production. Managed resources, health checks, readiness and graceful shutdown support the application lifecycle. See [logging](https://amkargar.github.io/GoNex-website/docs/main/logging/) and [operations](https://amkargar.github.io/GoNex-website/docs/main/operations/).
+
+## Production readiness
+
+Hardening, verification commands and outstanding release gates are tracked in the [production-readiness reports](docs/production-readiness/README.md). The [final readiness decision](docs/production-readiness/final-report.md) distinguishes passing technical checks from owner/reviewer and release evidence.
 
 ## Contributing
 

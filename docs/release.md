@@ -11,7 +11,7 @@
 
 ## Current support status
 
-This checkout is not a published release. Local Windows/amd64 verification is recorded in the phase reports. Linux/Windows Go 1.27.1 and latest 1.27 patch are configured CI targets; successful hosted runs are required before claiming that support matrix is verified. Other Go releases and operating systems are unverified. Release builds target Linux, Windows and macOS on amd64/arm64; cross-building alone does not prove runtime support.
+This checkout is not a published release. Local Windows/amd64 verification is recorded in the phase reports. Linux/Windows Go 1.27.2 and latest 1.27 patch are configured CI targets; successful hosted runs are required before claiming that support matrix is verified. Other Go releases and operating systems are unverified. Release builds target Linux, Windows and macOS on amd64/arm64; cross-building alone does not prove runtime support.
 
 ## Release checklist
 
@@ -31,3 +31,7 @@ Only the latest published patch in the active release line is intended to receiv
 ## Known limits and future scope
 
 Known limits: static service targets, cooperative cancellation, additive migrations without automatic rollback, conservative compatibility checks, no automatic business mapping, no distributed tracing exporter or streaming trace propagation. Brokers, an admin panel and advanced discovery remain future work.
+
+## Production-readiness gate
+
+The hardening implementation and evidence are tracked in [production-readiness](production-readiness/README.md). Its [final report](production-readiness/final-report.md) is the release decision, not the historical phase-8 implementation note. A green source CI matrix alone does not close owner-admin, independent review, tagged-install or controlled operational gates. Candidate artifact jobs run checks before build, emit checksums/commit provenance, and attest tagged artifacts with GitHub OIDC; actual signed/tag evidence must be retained before claiming a release.

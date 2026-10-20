@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        go: ['1.27.1', '1.27.x']
+        go: ['1.27.2', '1.27.x']
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
@@ -57,8 +57,11 @@ jobs:
       - run: go -C examples/microservices/services/identity test ./...
       - run: go -C examples/microservices/services/orders test ./...
       - name: Workflow lint
-        if: runner.os == 'Linux' && matrix.go == '1.27.1'
+        if: runner.os == 'Linux' && matrix.go == '1.27.2'
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+      - name: PowerShell verification script
+        if: runner.os == 'Windows' && matrix.go == '1.27.2'
+        run: pwsh -File scripts/verify.ps1
       - run: go run ./cmd/gonex grpc check
       - run: go run ./cmd/gonex openapi validate --file tests/testdata/basic.openapi.json --against tests/testdata/releases/v0.1.0.openapi.json
       - name: Race detector
@@ -90,6 +93,7 @@ jobs:
           --health-cmd "pg_isready -U gonex -d gonex_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      GONEX_REQUIRE_POSTGRES: '1'
       GONEX_TEST_POSTGRES_DSN: postgres://gonex:disposable_test_only@127.0.0.1:5432/gonex_test?sslmode=disable
       GIN_MODE: release
       GOFLAGS: -p=2
@@ -100,4 +104,19 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
         with:
           go-version-file: go.mod
-      - run: go test ./tests -run '^TestPostgresIntegration$' -v
+      - run: go test -race ./tests -run '^Test(Postgres|DatabaseReliability|MigrationProcessesAndRecovery)' -count=3 -v
+
+  consumer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GONEX_SMOKE_VERSION: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - run: go run ./internal/tooling/consumer

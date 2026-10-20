@@ -1,0 +1,54 @@
+name: Performance and load
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GIN_MODE: release
+      GOWORK: 'off'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - name: Record environment
+        run: |
+          mkdir -p .tools/performance
+          {
+            go version
+            uname -a
+            lscpu
+            git rev-parse HEAD
+          } > .tools/performance/environment.txt
+      - name: Paired core benchmarks
+        shell: bash
+        run: |
+          set -o pipefail
+          go test ./tests -run '^$' -bench BenchmarkComparison -benchmem -benchtime=300ms -count=5 | tee .tools/performance/bench.txt
+          go run ./internal/tooling/benchcheck .tools/performance/bench.txt
+      - name: Bounded workload profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          for scenario in get post params error database grpc; do
+            go run ./internal/tooling/loadcheck -scenario="$scenario" -requests=10000 -duration=5s -concurrency=16 > ".tools/performance/$scenario.json"
+          done
+          go run ./internal/tooling/loadcheck -telemetry -requests=10000 -duration=5s -concurrency=16 -cpu=.tools/performance/cpu.pprof -heap=.tools/performance/heap.pprof > .tools/performance/telemetry.json
+          go run ./internal/tooling/loadcheck -requests=100000 -duration=30s -concurrency=128 > .tools/performance/burst.json
+          go run ./internal/tooling/loadcheck -requests=20000 -duration=60s -rate=200 -concurrency=16 > .tools/performance/soak.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: performance-evidence
+          path: .tools/performance/
+          retention-days: 30

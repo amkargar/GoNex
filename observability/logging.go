@@ -187,7 +187,15 @@ func RequestLog(logger *slog.Logger) gin.HandlerFunc {
 		requestID := hex.EncodeToString(id)
 		c.Header("X-Request-ID", requestID)
 		requestLogger := logger.With("request_id", requestID)
-		ctx := context.WithValue(c.Request.Context(), requestKey{}, requestID)
+		incoming := ""
+		if values := c.Request.Header.Values("traceparent"); len(values) == 1 {
+			incoming = values[0]
+		}
+		traceCtx := WithTraceparent(c.Request.Context(), incoming)
+		trace := Traceparent(traceCtx)
+		requestLogger = requestLogger.With("trace_id", strings.Split(trace, "-")[1])
+		c.Header("traceparent", trace)
+		ctx := context.WithValue(traceCtx, requestKey{}, requestID)
 		c.Request = c.Request.WithContext(WithLogger(ctx, requestLogger))
 		defer func() {
 			fault := recover()
@@ -205,7 +213,7 @@ func RequestLog(logger *slog.Logger) gin.HandlerFunc {
 			} else if status >= 400 {
 				level = slog.LevelWarn
 			}
-			attrs := []any{"method", c.Request.Method, "path", path, "status", status, "duration_ms", float64(time.Since(start).Microseconds()) / 1000}
+			attrs := []any{"method", boundedMethod(c.Request.Method), "path", path, "status", status, "duration_ms", float64(time.Since(start).Microseconds()) / 1000}
 			if fault != nil {
 				attrs = append(attrs, "error", "handler panic")
 			} else if code, ok := c.Get("gonex.error"); ok {
@@ -227,4 +235,13 @@ func safeKey(key string) string {
 		}
 	}
 	return key
+}
+
+func boundedMethod(method string) string {
+	switch method {
+	case "GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT":
+		return method
+	default:
+		return "OTHER"
+	}
 }

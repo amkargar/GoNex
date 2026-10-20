@@ -217,6 +217,9 @@ func TestDatabaseFailuresAreRedacted(t *testing.T) {
 func TestPostgresIntegration(t *testing.T) {
 	dsn := os.Getenv("GONEX_TEST_POSTGRES_DSN")
 	if dsn == "" {
+		if os.Getenv("GONEX_REQUIRE_POSTGRES") == "1" {
+			t.Fatal("required PostgreSQL DSN missing")
+		}
 		t.Skip("set GONEX_TEST_POSTGRES_DSN to an EMPTY disposable PostgreSQL database; SQLite integration runs unconditionally")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

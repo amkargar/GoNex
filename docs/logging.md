@@ -37,8 +37,10 @@ Manual consumers configure `config.Config` with `Name`, `Environment`, `LogLevel
 | Field | Meaning |
 | --- | --- |
 | `time`, `level`, `msg` | slog timestamp, severity and event message |
+| `service`, `environment` | Application identity and environment from config |
+| `trace_id` | W3C trace identifier shared with unary RPC calls |
 | `request_id` | Fresh server-generated identifier, also returned as `X-Request-ID` |
-| `method`, `path` | HTTP method and registered route pattern; unknown paths use `unmatched` |
+| `method`, `path` | Standard HTTP method (other tokens use `OTHER`) and registered route pattern; unknown paths use `unmatched` |
 | `status`, `duration_ms` | Response status and elapsed processing milliseconds |
 | `error` | Safe framework error code or `handler panic`, when applicable |
 
@@ -59,3 +61,5 @@ observability.Logger(ctx, nil).InfoContext(ctx,
 Import `github.com/amkargar/gonex/observability`. Pass the request context into services; the logger carries its request ID. Outside an HTTP request, supply the application logger as the fallback (`observability.Logger(ctx, application.Logger())`). The `module` field is explicit business context, not inferred from the URL. `observability.RequestID(ctx)` reads the current ID directly.
 
 For a custom destination, construct a logger with `observability.NewLogger(observability.LogOptions{Output: writer, Format: "json", Level: "INFO"})` and pass it through `config.Config.Logger`. Keep asynchronous tasks' cancellation and log context deliberate.
+
+Lifecycle failures use safe startup_failed/resource_failed/shutdown_failed codes in default logs. Detailed causes are returned to the caller for deliberate private handling; do not log credential-bearing causes indiscriminately.

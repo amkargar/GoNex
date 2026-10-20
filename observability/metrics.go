@@ -4,13 +4,24 @@ import (
 	"context"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
+// MaxOperations bounds total operation labels, including one shared overflow series.
+const MaxOperations = 128
+const MaxOperationLength = 160
+
+var latencyBounds = [...]time.Duration{5 * time.Millisecond, 10 * time.Millisecond, 25 * time.Millisecond, 50 * time.Millisecond, 100 * time.Millisecond, 250 * time.Millisecond, 500 * time.Millisecond, time.Second, 2500 * time.Millisecond, 5 * time.Second}
+
+func LatencyBounds() []time.Duration { return append([]time.Duration(nil), latencyBounds[:]...) }
+
 type Measurement struct {
-	Requests         int64 `json:"requests"`
-	Errors           int64 `json:"errors"`
-	InFlight         int64 `json:"in_flight"`
-	TotalNanoseconds int64 `json:"total_nanoseconds"`
+	DurationBuckets  [11]int64 `json:"duration_buckets"`
+	Requests         int64     `json:"requests"`
+	Errors           int64     `json:"errors"`
+	InFlight         int64     `json:"in_flight"`
+	TotalNanoseconds int64     `json:"total_nanoseconds"`
 }
 type Snapshot struct {
 	Ready      bool                   `json:"ready"`
@@ -51,6 +62,18 @@ func (m *Metrics) Begin(operation string) func(bool) {
 	if m.operations == nil {
 		m.operations = map[string]Measurement{}
 	}
+	if len(operation) > MaxOperationLength || !utf8.ValidString(operation) {
+		operation = "__overflow__"
+	}
+	for _, r := range operation {
+		if unicode.IsControl(r) {
+			operation = "__overflow__"
+			break
+		}
+	}
+	if _, known := m.operations[operation]; !known && len(m.operations) >= MaxOperations-1 {
+		operation = "__overflow__"
+	}
 	value := m.operations[operation]
 	value.InFlight++
 	m.operations[operation] = value
@@ -66,7 +89,14 @@ func (m *Metrics) Begin(operation string) func(bool) {
 			if failed {
 				value.Errors++
 			}
-			value.TotalNanoseconds += time.Since(start).Nanoseconds()
+			elapsed := time.Since(start)
+			value.TotalNanoseconds += elapsed.Nanoseconds()
+			for i, bound := range latencyBounds {
+				if elapsed <= bound {
+					value.DurationBuckets[i]++
+				}
+			}
+			value.DurationBuckets[len(latencyBounds)]++
 			m.operations[operation] = value
 		})
 	}

@@ -20,7 +20,7 @@ Build typed APIs with explicit modules, keep business logic independent of trans
 3. Read [modules and lifecycle](modules.md) to understand registration and resource ownership.
 4. Define [typed HTTP contracts](http-openapi.md), then choose the integrations you need.
 
-**Requirements:** the repository targets Go 1.27.1. Downloads need network access or a populated module cache. There is no published framework release yet; hosted CI and live PostgreSQL verification are still pending. See [release and support policy](release.md) for the current verification boundary.
+**Requirements:** the repository targets Go 1.27.2. Downloads need network access or a populated module cache. There is no published framework release yet; hosted CI and live PostgreSQL verification are still pending. See [release and support policy](release.md) for the current verification boundary.
 
 ## Build an application
 
@@ -80,3 +80,10 @@ Phase reports are historical engineering records; use the guides above for curre
 
 goNex is licensed under the [BSD 3-Clause License](../LICENSE).
 
+
+## Production hardening
+
+- [Verification](verification.md) and [readiness evidence](production-readiness/README.md).
+- [Database reliability](database-reliability.md), [observability](observability.md) and [resilience](resilience.md).
+- [Deployment](deployment.md), [promotion checklist](production-checklist.md) and [troubleshooting](troubleshooting.md).
+- [Support policy](support-policy.md) and [security threat model](security-threat-model.md).

@@ -51,6 +51,10 @@ func CORS(options CORSOptions) (gin.HandlerFunc, error) {
 	return func(c *gin.Context) {
 		c.Writer.Header().Add("Vary", "Origin")
 		origin := c.GetHeader("Origin")
+		if len(c.Request.Header.Values("Origin")) > 1 {
+			c.AbortWithStatusJSON(403, transport.ErrorResponse{Code: "forbidden", Message: "origin or preflight not allowed"})
+			return
+		}
 		if origin == "" {
 			c.Next()
 			return
@@ -58,7 +62,7 @@ func CORS(options CORSOptions) (gin.HandlerFunc, error) {
 		deny := func() {
 			c.AbortWithStatusJSON(403, transport.ErrorResponse{Code: "forbidden", Message: "origin or preflight not allowed"})
 		}
-		if !origins[origin] {
+		if len(c.Request.Header.Values("Origin")) != 1 || !origins[origin] {
 			deny()
 			return
 		}
@@ -69,7 +73,7 @@ func CORS(options CORSOptions) (gin.HandlerFunc, error) {
 		if c.Request.Method == "OPTIONS" && c.GetHeader("Access-Control-Request-Method") != "" {
 			c.Writer.Header().Add("Vary", "Access-Control-Request-Method")
 			c.Writer.Header().Add("Vary", "Access-Control-Request-Headers")
-			if !methods[c.GetHeader("Access-Control-Request-Method")] {
+			if len(c.Request.Header.Values("Access-Control-Request-Method")) != 1 || len(c.Request.Header.Values("Access-Control-Request-Headers")) > 1 || !methods[c.GetHeader("Access-Control-Request-Method")] {
 				deny()
 				return
 			}

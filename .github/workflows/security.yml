@@ -1,0 +1,43 @@
+name: Security
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      - run: go install github.com/zricethezav/gitleaks/v8@v8.30.1
+      - run: bash scripts/security.sh
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: security-reports
+          path: .tools/security/
+          retention-days: 30
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GIN_MODE: release
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - run: go test ./http -run '^$' -fuzz '^FuzzStrictBinding$' -fuzztime=60s -parallel=2

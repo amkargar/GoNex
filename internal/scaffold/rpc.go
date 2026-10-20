@@ -43,7 +43,7 @@ func addRPC(p *Plan, m *Manifest, entry Module) error {
 			return err
 		}
 		p.Changes = append(p.Changes, contractsFiles("contracts", m.ContractsModule)...)
-		work := []byte("go 1.27.1\n\nuse (\n .\n ./contracts\n)\n")
+		work := []byte("go 1.27.2\n\nuse (\n .\n ./contracts\n)\n")
 		if err := p.owned(m, "go.work", work); err != nil {
 			return err
 		}

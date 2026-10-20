@@ -12,6 +12,7 @@ import (
 	nethttp "net/http"
 	"reflect"
 	"strconv"
+	"unicode/utf8"
 )
 
 func bind(c *gin.Context, value reflect.Value, inputs []openapi.Input, limit int64) bool {
@@ -52,6 +53,9 @@ func bind(c *gin.Context, value reflect.Value, inputs []openapi.Input, limit int
 			}
 			if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) && field.Kind() != reflect.Pointer && field.Kind() != reflect.Slice && field.Kind() != reflect.Map {
 				return bad(400, "body must not be null")
+			}
+			if !utf8.Valid(raw) {
+				return bad(400, "invalid JSON encoding")
 			}
 			strict := json.NewDecoder(bytes.NewReader(raw))
 			if err = uniqueJSON(json.NewDecoder(bytes.NewReader(raw)), 0); err != nil {

@@ -14,7 +14,7 @@ These decisions began as the phase 0 contract and now describe the implemented a
 
 ## Module and toolchain
 
-The Go module is `github.com/amkargar/gonex`; the product name is goNex. The repository baseline is Go 1.27.1. Exact dependency versions are pinned in [go.mod](../go.mod). See [release policy](release.md) for configured and verified platforms.
+The Go module is `github.com/amkargar/gonex`; the product name is goNex. The repository baseline is Go 1.27.2. Exact dependency versions are pinned in [go.mod](../go.mod). See [release policy](release.md) for configured and verified platforms.
 
 ## Construction and registration
 
