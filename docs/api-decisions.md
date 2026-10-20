@@ -47,4 +47,4 @@ HTTP versions are explicit adapter packages. gRPC remains optional, with version
 | `App.Shutdown(ctx)` | Drains HTTP and closes resources; repeated calls are safe |
 | `App.Ready(ctx)` | Checks running state and registered dependency readiness |
 
-States are created, registered, starting, running, stopping and stopped. A stopped instance cannot restart. Configuration includes address, middleware, exposure switches and read/write/idle/shutdown timeouts. Zero durations use defaults; negative values fail. See [modules](modules.md) and [operations](operations.md).
+States are created, registered, starting, running, stopping and stopped. A stopped instance cannot restart. `App.Logger() *slog.Logger` returns the application-scoped logger. Configuration includes logging, address, middleware, exposure switches and read/write/idle/shutdown timeouts. Zero durations use defaults; negative values fail. See [modules](modules.md) and [operations](operations.md).

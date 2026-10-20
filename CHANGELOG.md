@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- API-first library/CLI onboarding without cloning the framework.
+- Installed-module version defaults and project-local Go tool dependencies for generated apps/workspaces.
+- Structured slog lifecycle/request logging, bound startup URLs, request IDs and production JSON.
+
 - Explicit module registration, managed lifecycle, readiness and Gin routing.
 - Typed HTTP binding/validation, strict JSON, OpenAPI 3.1 and independent HTTP versions.
 - Optional GORM persistence, PostgreSQL/SQLite and explicit checked migrations.

@@ -21,7 +21,9 @@ The executable is named `gonex`; framework branding is goNex. Run commands from 
 gonex new NAME --module IMPORT_PATH [--framework-version VERSION] [--arch monolith|microservices] [--dry-run]
 ```
 
-The architecture defaults to `monolith`; the framework version defaults to `v0.1.0`. The destination must not exist. Use a resolvable release version or the [explicit local checkout override](getting-started.md#use-an-unpublished-checkout).
+The architecture defaults to `monolith`. The framework version defaults to the installed CLI’s resolved module version, including Go pseudo-versions. A CLI built locally must receive an explicit valid `--framework-version`. The destination must not exist.
+
+Install with `go install github.com/amkargar/gonex/cmd/gonex@main` for development, or pin a reviewed commit/published tag. Generated apps include a tool directive: inside the app use `go tool gonex` for the commands below. Microservices workspaces also have a root tool module; run `go mod tidy` there after creation.
 
 ## Modules and services
 
@@ -61,7 +63,7 @@ gonex --help
 gonex --version
 ```
 
-`run` invokes the Go executable path for the project. `build` builds its packages; `check` runs tests, vet and build. Child command failures preserve their exit codes. A workspace command must identify a service when selection is ambiguous.
+`run` invokes the Go executable path for the project; the application displays its bound address and writes structured lifecycle/request logs. See [logging](logging.md). `build` builds its packages; `check` runs tests, vet and build. Child command failures preserve their exit codes. A workspace command must identify a service when selection is ambiguous.
 
 ## OpenAPI
 

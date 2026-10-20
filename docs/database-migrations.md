@@ -24,19 +24,35 @@ Migrations are immutable UTF-8 SQL files named `000001_description.up.sql`. Use 
 
 No AutoMigrate or implicit application-start schema changes. Down migrations are deliberately absent from the example because dropping persisted users is destructive. Forward corrections use new versions.
 
-## Run the SQLite example
+## Add persistence to your application
 
-PowerShell example:
+From your generated application root:
+
+```sh
+go tool gonex create module messages --db
+go mod tidy
+```
+
+Configure SQLite in the process environment. POSIX shell:
+
+```sh
+export DATABASE_DIALECT=sqlite
+export DATABASE_URL='file:app.db?_pragma=busy_timeout(5000)'
+go tool gonex db migrate
+go tool gonex run
+```
+
+PowerShell:
 
 ```powershell
 $env:DATABASE_DIALECT='sqlite'
-$env:DATABASE_URL='file:users.db?_pragma=busy_timeout(5000)'
-go run ./examples/basic migrate
-go run ./examples/basic
+$env:DATABASE_URL='file:app.db?_pragma=busy_timeout(5000)'
+go tool gonex db migrate
+go tool gonex run
 ```
 
-POST /users persists rows; subsequent GET /users/{id} works across application restarts. Without DATABASE_URL the example uses its in-memory repository, and HTTP-only apps import no persistence package.
+The starter `GET /messages` reads its seeded message from the database. Extend its handwritten service, repository, schemas and routes for your domain; `--db` does not generate a complete model CRUD API. Serving never runs migrations automatically. No framework checkout or automatic .env loading is required.
 
 ## Verify database behavior
 
-`go test ./...` always tests file-backed SQLite CRUD, transactions, migration rollback/checksums/concurrency and lifecycle cleanup. PostgreSQL integration is explicitly skipped unless `GONEX_TEST_POSTGRES_DSN` identifies an **empty disposable test database**; it is never inferred from production DATABASE_URL. PostgreSQL credentials and deployment-specific behavior require that integration environment.
+Framework maintainers run `go test ./...` in the framework repository to test file-backed SQLite CRUD, transactions, migration rollback/checksums/concurrency and lifecycle cleanup. PostgreSQL integration is explicitly skipped unless `GONEX_TEST_POSTGRES_DSN` identifies an **empty disposable test database**; it is never inferred from production DATABASE_URL. PostgreSQL credentials and deployment-specific behavior require that integration environment.

@@ -36,58 +36,36 @@ goNex is a modular Go framework for typed HTTP APIs and explicit service boundar
 | Persistence | Optional GORM, SQLite/PostgreSQL adapters and explicit checksum-verified SQL migrations |
 | RPC | Optional TLS/mTLS gRPC, managed clients, deadlines and versioned Protobuf contracts |
 | CLI | Safe project/module scaffolding, dry runs, independent services and reproducible generators |
-| Operations | Dependency readiness, trace propagation and in-process request/error/latency metrics |
+| Operations | Dependency readiness, trace propagation and in-process request/error/latency metrics, structured logging and startup URLs |
 | Security | Application-owned authentication, authorization and explicit CORS policies |
 
 Business services depend on small local interfaces. Gin, GORM, gRPC and generated messages stay in adapters. See the [architecture and dependencies](docs/architecture.md).
 
 ## Quick start
 
-Requires **Go 1.27.1**, the repository baseline. Begin with the runnable example from this checkout:
+Requires **Go 1.27.1**. Install Gonex as a library/tool dependency; work in your own application, without cloning this framework:
 
 ```sh
-go run ./examples/basic
+go install github.com/amkargar/gonex/cmd/gonex@main
+gonex new shop --module example.com/acme/shop
+cd shop
+go mod tidy
+go tool gonex create module users
+go tool gonex check
+go tool gonex run
 ```
 
-In another terminal:
-
-```sh
-curl http://127.0.0.1:8080/healthz
-curl http://127.0.0.1:8080/readyz
-curl http://127.0.0.1:8080/users/1
-```
-
-The responses are `{"status":"ok"}`, `{"status":"ready"}` and `{"id":"1","name":"Ada","email":"ada@example.com"}`, respectively.
-
-The example uses an in-memory repository when `DATABASE_URL` is unset. Its contract is at [http://127.0.0.1:8080/openapi.json](http://127.0.0.1:8080/openapi.json). Set `HTTP_ADDRESS` to change the listener; press Ctrl+C to stop. For persistence, follow [databases and migrations](docs/database-migrations.md).
+`@main` installs a development snapshot; choose a reviewed commit or a real published tag when pinning a particular build. The generated project pins the resolved CLI/framework module version. Ensure Go's binary directory is on PATH for the initial `gonex` command.
 
 ## Create an application
 
-Build the CLI from the checkout:
+Develop JSON APIs in generated modules. `schemas.go` defines request/response types and validation, handlers call plain Go services, and routes declare HTTP methods and OpenAPI contracts. This gives a DRF-inspired API workflow with explicit Go composition. There is no application HTML template or CSS layer.
 
-```sh
-go build -o gonex ./cmd/gonex
-```
+`GET /users` initially returns `{"message":"users"}`; extend the handwritten module files for your domain. Database CRUD is not generated automatically. Persistence, API versioning, gRPC and microservices are optional.
 
-On Windows, use `go build -o gonex.exe ./cmd/gonex`. Put the binary on your PATH, then:
+The running terminal shows the actual server URL, OpenAPI URL and graceful-stop instructions. Request logs include status, duration and request ID. Development uses readable output; production can use JSON. See [logging](docs/logging.md).
 
-```sh
-gonex new shop --module example.com/acme/shop
-cd shop
-gonex create module users
-```
-
-Generated projects default to framework v0.1.0, which is not published yet. Before resolving dependencies, use the [explicit local checkout override](docs/getting-started.md#use-an-unpublished-checkout), or select a published version with `--framework-version` when one exists. Then:
-
-```sh
-go mod tidy
-gonex check
-gonex run
-```
-
-`GET /users` returns `{"message":"users"}`. Use `--dry-run` to inspect generator plans. Start a module with a versioned HTTP adapter using `gonex create module catalog --http-version v1`.
-
-See the [getting-started guide](docs/getting-started.md) and [CLI reference](docs/cli.md) for profiles, flags and service selection.
+See [getting started](docs/getting-started.md), [CLI](docs/cli.md) and the [official documentation](https://amkargar.github.io/GoNex-website/docs/main/).
 
 ## Project structure
 
@@ -123,7 +101,7 @@ The [documentation index](docs/README.md) provides a reading path and guide dire
 
 | Example | Purpose | Start here |
 |---|---|---|
-| Basic application | Typed users API, memory/SQLite repository, health and optional metrics | [Getting started](docs/getting-started.md#run-the-basic-example) |
+| Basic application | Typed users API, memory/SQLite repository, health and optional metrics | [Getting started](examples/basic/main.go) |
 | Identity and Orders | Independent HTTP → gRPC services, readiness and TLS configuration | [Service example](examples/microservices/README.md) |
 | TLS integration fixture | Generated contracts, domain mapping and bounded provider failure | [Integration source](integration/rpc/rpc_test.go) |
 
@@ -141,6 +119,7 @@ Generated client adapters contain explicit business-mapping TODOs. Complete thei
 | Documentation page | Disabled; opt in with `DocsEnabled` |
 | gRPC | No listener unless explicitly managed; TLS required by default |
 | RPC client timeout | 5s; earlier caller deadlines take precedence |
+| Logging | Readable development output, JSON in production, request IDs; [configuration](docs/logging.md) |
 | Metrics endpoint | No framework endpoint; basic example opts in with `GONEX_EXPOSE_METRICS=1` |
 
 Environment loading belongs to the executable. The examples and generated applications document their own variables; there is no automatic `.env` loading. Review [security defaults](docs/security.md) before deployment.

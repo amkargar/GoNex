@@ -11,6 +11,10 @@
 - [Drain and stop services](#drain-and-stop-services)
 - [Verify operational behavior](#verify-operational-behavior)
 
+## Structured logs
+
+Lifecycle and request logs are enabled by default. See [server output and logging](logging.md) for readable development output, JSON production output, request IDs and configuration. Trace middleware and metrics remain independently opt-in.
+
 ## Health and readiness
 
 `/healthz` reports that HTTP is serving. `/readyz` returns 200 only while the application is running and its managed readiness resources and named checks succeed; otherwise it returns a redacted 503. `Registrar.Check(name, func(context.Context) error)` registers an application-specific check. Checks share a one-second budget and must honor context. The GORM resource pings its pool; the gRPC server checks its transport lifecycle. Check downstream RPC availability explicitly with `Clients.Ready`, rather than assuming a constructed client is connected.

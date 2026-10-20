@@ -16,21 +16,22 @@
 
 ## Generate a workspace
 
-Build the CLI first. These commands require resolvable framework/contracts versions or explicit local development overrides; see [unpublished checkouts](getting-started.md#use-an-unpublished-checkout). Each service resolves its own dependencies.
+[Install a versioned CLI](getting-started.md#install-the-cli) first. Each service resolves its own dependencies. The workspace root tracks the CLI as a Go tool; generated contracts are workspace-local until you publish your contracts module.
 
 ```sh
 gonex new commerce --module example.com/acme/commerce --arch microservices
 cd commerce
-gonex create service identity
-gonex create service orders
-gonex create module users --service identity --transport grpc
-gonex create module orders --service orders --transport http
-gonex create client identity --service orders --module orders --version v1
-gonex grpc generate
+go mod tidy
+go tool gonex create service identity
+go tool gonex create service orders
+go tool gonex create module users --service identity --transport grpc
+go tool gonex create module orders --service orders --transport http
+go tool gonex create client identity --service orders --module orders --version v1
+go tool gonex grpc generate
 go -C services/identity mod tidy
 go -C services/orders mod tidy
-gonex check --service identity
-gonex check --service orders
+go tool gonex check --service identity
+go tool gonex check --service orders
 ```
 
 ## Understand module boundaries

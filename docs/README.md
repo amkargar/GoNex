@@ -15,8 +15,8 @@ Build typed APIs with explicit modules, keep business logic independent of trans
 
 ## Start here
 
-1. [Run the basic example](getting-started.md#run-the-basic-example) directly from the checkout.
-2. [Create your project](getting-started.md#create-a-project) and configure a local dependency override until releases are published.
+1. [Install the CLI](getting-started.md#install-the-cli) as a Go development tool.
+2. [Create your project](getting-started.md#create-a-project), resolve its pinned dependency and add a module.
 3. Read [modules and lifecycle](modules.md) to understand registration and resource ownership.
 4. Define [typed HTTP contracts](http-openapi.md), then choose the integrations you need.
 
@@ -26,7 +26,7 @@ Build typed APIs with explicit modules, keep business logic independent of trans
 
 | Guide | What you will learn |
 |---|---|
-| [Getting started](getting-started.md) | Run examples, build the CLI and create a project |
+| [Getting started](getting-started.md) | Install Gonex, generate your own project and develop APIs |
 | [CLI reference](cli.md) | Commands, flags, profiles and safe generator behavior |
 | [Modules and lifecycle](modules.md) | Register features, inject services and own resources |
 | [Typed HTTP and OpenAPI](http-openapi.md) | Bind requests, validate DTOs and export contracts |
@@ -39,6 +39,7 @@ Build typed APIs with explicit modules, keep business logic independent of trans
 
 | Guide | What you will learn |
 |---|---|
+| [Structured logging](logging.md) | Startup URLs, readable/JSON logs and request IDs |
 | [Operations](operations.md) | Readiness, trace propagation, metrics and shutdown |
 | [Security configuration](security.md) | Authentication, authorization, CORS, limits and redaction |
 | [Release and support policy](release.md) | Verification gates, artifacts and publication prerequisites |
@@ -78,3 +79,4 @@ Phase reports are historical engineering records; use the guides above for curre
 | 8 | [Operational hardening and release gates](phases/8.md) |
 
 goNex is licensed under the [BSD 3-Clause License](../LICENSE).
+

@@ -1,175 +1,75 @@
-# Getting started
+# Getting started: build an API
 
 [Project home](../README.md) · [Documentation index](README.md)
 
-Run the existing example first, then create an application or register a typed endpoint directly. No database is required for the basic HTTP example.
-
-## Contents
-
-- [Requirements](#requirements)
-- [Run the basic example](#run-the-basic-example)
-- [Build the CLI](#build-the-cli)
-- [Create a project](#create-a-project)
-  - [Use an unpublished checkout](#use-an-unpublished-checkout)
-- [Register a typed endpoint](#register-a-typed-endpoint)
-- [Add persistence or API versions](#add-persistence-or-api-versions)
-- [Generator safety](#generator-safety)
-- [Next steps](#next-steps)
+Gonex is an API framework installed as a Go dependency. Create your own application with the CLI, generate modules, and implement JSON endpoints inside that application. No framework checkout, Git setup, HTML templates or CSS are required.
 
 ## Requirements
 
-Use Go 1.27.1, the repository baseline, and a populated module cache or network access for dependency downloads. No published framework release is available yet. The CLI defaults generated projects to v0.1.0; use a local checkout override during development.
+Use Go 1.27.1 and access to Go modules. Gonex is in development; no release tag is assumed. Install a development snapshot with `@main`, or replace it with a reviewed commit or an actual published tag. Generated applications pin the resolved version used by the installed CLI.
 
-## Run the basic example
-
-From the repository root:
+## Install the CLI
 
 ```sh
-go run ./examples/basic
+go install github.com/amkargar/gonex/cmd/gonex@main
+gonex --version
 ```
 
-In a second terminal:
-
-```sh
-curl http://127.0.0.1:8080/healthz
-curl http://127.0.0.1:8080/users/1
-```
-
-Expect `{"status":"ok"}` and `{"id":"1","name":"Ada","email":"ada@example.com"}`. The listener defaults to `127.0.0.1:8080`. `HTTP_ADDRESS` overrides it; Ctrl+C drains requests and closes managed resources. The example uses memory unless `DATABASE_URL` is set.
-
-`/readyz` reports dependency readiness; `/openapi.json` exposes the typed API contract. For persistent storage, follow [databases and migrations](database-migrations.md). For optional metrics, see [operations](operations.md).
-
-## Build the CLI
-
-On macOS/Linux:
-
-```sh
-go build -o gonex ./cmd/gonex
-```
-
-On Windows:
-
-```powershell
-go build -o gonex.exe ./cmd/gonex
-.\gonex.exe --help
-```
-
-Put the executable on your PATH to use `gonex` from generated projects. After a release is published, install its exact version with `go install github.com/amkargar/gonex/cmd/gonex@VERSION`, replacing VERSION with that release tag.
+Ensure `GOBIN` (or `GOPATH/bin` when unset) is on PATH. This bootstrap command installs a development tool; your application's framework dependency is recorded separately in its go.mod.
 
 ## Create a project
 
 ```sh
 gonex new shop --module example.com/acme/shop
 cd shop
-gonex create module users
-gonex create module reports --transport none
+go mod tidy
+go tool gonex create module users
+go tool gonex check
+go tool gonex run
 ```
 
-Before resolving dependencies, configure the local override below if the framework version is unpublished. Then:
+Use your application's module path. The generated go.mod contains the framework dependency and a `tool github.com/amkargar/gonex/cmd/gonex` directive. Continue with `go tool gonex` inside the app so the project selects its CLI version. The tool is not linked into your application binary.
+
+`GET http://127.0.0.1:8080/users` initially returns `{"message":"users"}`. This is an editable starter endpoint, not an automatic database CRUD API. Inspect `/openapi.json` for its contract and `/healthz` for liveness.
+
+## Develop inside your application
+
+- `modules/users/service.go`: plain Go business behavior.
+- `modules/users/http/schemas.go`: request/response DTOs and validation tags.
+- `modules/users/http/handlers.go`: map HTTP input to services and services to responses.
+- `modules/users/http/routes.go`: typed endpoints, methods and response statuses.
+- `modules/users/http/openapi.go`: contract descriptions.
+- `modules/users/module.go`: service construction and adapter registration.
+
+These roles resemble serializers, views and routing in DRF, with explicit Go types and composition. Gonex does not provide Django-style page rendering, an admin site or automatic ModelViewSets. Use a separate frontend to consume the JSON API.
+
+Generated registries and `.gonex.json` are tool-owned. The other files are yours. If a new adapter needs a different service interface, change your module's registration code deliberately; do not alter a generated registry to bypass ownership checks.
+
+## Server output and logs
+
+The terminal shows the actual listening URL after successful startup, the OpenAPI URL when enabled, the environment, version and Ctrl+C instructions. Requests produce one completion log with method, registered route, status, elapsed milliseconds and request ID. Business code can retrieve the request logger from its context; see [logging](logging.md).
+
+The generated configuration reads `APP_NAME`, `HTTP_ADDRESS`, `GONEX_ENV`, `GONEX_LOG_LEVEL`, `GONEX_LOG_FORMAT` and `GONEX_LOG_COLOR`. Development defaults to readable output; `GONEX_ENV=production` defaults to JSON. `.env.example` documents the variables; `.env` is not loaded automatically.
+
+## Existing Go applications
 
 ```sh
-go mod tidy
-gonex check
-gonex run
+go get github.com/amkargar/gonex@main
 ```
 
-`GET /users` returns `{"message":"users"}`. `run` invokes Go directly; `build` builds packages; `check` tests, vets and builds. Child failures preserve their exit codes.
+Register modules and start Gonex from your executable. A CLI-generated application is the recommended starting point, but the public library also supports manual composition. Installing a dependency does not replace your existing HTTP server automatically. Run `go mod tidy` after adding imports.
 
-### Use an unpublished checkout
-
-For local development only, point the generated module at your checkout before running `go mod tidy`. On Windows, replace the example path as needed:
-
-```powershell
-go mod edit -replace=github.com/amkargar/gonex=D:/Projects/gonex
-go mod tidy
-```
-
-On macOS/Linux, use your absolute checkout path, for example `go mod edit -replace=github.com/amkargar/gonex=/path/to/gonex`. This is an explicit local development override; the generator does not insert machine-specific paths. Remove it with `go mod edit -dropreplace=github.com/amkargar/gonex` and resolve a published version before deployment.
-
-Microservices also depend on the independent contracts module. Resolve or override that module separately in each service; see the [microservices guide](microservices.md). Run `go mod tidy` after generators add dependencies.
-
-## Register a typed endpoint
-
-The following complete program registers one module and one typed route. Save it as main.go in a module that resolves the framework:
-
-```go
-package main
-
-import (
-	"context"
-	"log"
-	"os"
-	"os/signal"
-	"syscall"
-
-	"github.com/amkargar/gonex"
-	"github.com/amkargar/gonex/app"
-	"github.com/amkargar/gonex/config"
-	transport "github.com/amkargar/gonex/http"
-)
-
-type greeting struct {
-	Message string `json:"message"`
-}
-
-type helloModule struct{}
-
-func (helloModule) Register(r *app.Registrar) error {
-	return transport.Register(r, transport.Endpoint[transport.NoBody, greeting]{
-		Method:      "GET",
-		Path:        "/hello",
-		OperationID: "hello",
-		Status:      200,
-		Handler: func(context.Context, transport.NoBody) (greeting, error) {
-			return greeting{Message: "Hello from goNex"}, nil
-		},
-	})
-}
-
-func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	a, err := gonex.New(config.Config{})
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err = a.Register(helloModule{}); err != nil {
-		log.Fatal(err)
-	}
-	if err = a.Run(ctx); err != nil {
-		log.Fatal(err)
-	}
-}
-```
-
-`GET /hello` returns `{"message":"Hello from goNex"}` and appears in `/openapi.json`. In an application, move business behavior into a service and keep transport DTOs and mapping in the adapter. See [modules](modules.md) and [HTTP contracts](http-openapi.md).
-
-## Add persistence or API versions
-
-`gonex create module messages --db` adds a local Store interface, GORM adapter/model and an explicit migration with a seeded message. Set `DATABASE_URL` and optionally `DATABASE_DIALECT`, then run `gonex db migrate` before serving. `gonex db status` prints migration history. There is no automatic `.env` loading.
-
-For an initially versioned API:
+## Optional persistence, versions and RPC
 
 ```sh
-gonex create module catalog --http-version v1
-go mod tidy
-gonex openapi generate --http-version v1 --out v1.json
-gonex openapi validate --file v1.json
+go tool gonex create module messages --db
+go tool gonex create module catalog --http-version v1
 ```
 
-This registers catalog under `/api/v1` without legacy catalog routes. Compare a future export with a reviewed baseline using `gonex openapi validate --file v1.json --against baseline.json`. See [versioning](versioning.md) and [upgrades](upgrade.md).
+Database modules require explicit configuration and migration. HTTP versioning, gRPC and microservices remain opt-in. See [CLI](cli.md), [database](database-migrations.md), [HTTP contracts](http-openapi.md) and [versions](versioning.md).
 
 ## Generator safety
 
-Use `--dry-run` on generator commands to inspect plans without changing project files. Handwritten source is not overwritten. `.gonex.json` records template format and hashes for tool-owned registries; edits to those files cause a conflict before writes. Existing destination directories are refused for new projects.
+Use `--dry-run` to inspect a plan. Generators reject existing destinations, invalid names, traversal, symlinks and overwritten handwritten files. Tool-owned registries are hash-checked. Writes use staging and a lock, with rollback on ordinary errors; multi-file updates are not power-loss atomic. Inspect an interrupted `.gonex.lock` before recovery.
 
-Writes are staged, guarded with an exclusive lock and rolled back on ordinary application errors. Interrupted OS/process failures may require inspecting `.gonex.lock`; multi-file writes are not crash-atomic. Symlinks, traversal and invalid names are rejected. Names are lowercase Go identifiers; module paths and framework versions follow Go validation.
-
-## Next steps
-
-- [CLI reference](cli.md): command syntax and flags.
-- [Modules and lifecycle](modules.md): service injection and resource ownership.
-- [Typed HTTP and OpenAPI](http-openapi.md): input origins, validation and contracts.
-- [Optional gRPC](grpc.md) and [microservices](microservices.md): independent service boundaries.
-- [Operations](operations.md) and [security](security.md): readiness, shutdown and deployment defaults.
-- [Runnable Identity/Orders example](../examples/microservices/README.md): a completed HTTP-to-gRPC mapping.
+A CLI built from a local checkout has no published module version. For framework development only, pass a valid `--framework-version VERSION` explicitly and use your intentional local replacement. Ordinary application development does not need this workflow.
