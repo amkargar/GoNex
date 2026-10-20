@@ -22,6 +22,10 @@ Supported test scope is Linux/Windows amd64, Go 1.27.2 and latest 1.27.x, Postgr
 
 The aggregate Go and release-artifact runs at this commit failed **workflow lint**, despite the above passing jobs. The lint error was an unused shell loop variable, fixed at 5e54908. Those aggregate runs must not be reported green. Candidate cross-build success is recorded separately after its dependent gates finish.
 
+## Follow-up runner finding
+
+The release-candidate rerun at 029a620 hit the sample's three-second HTTP client timeout once on Windows in the PowerShell verification step; the parallel Windows quality job passed. The bounded CRUD contract harness now allows ten seconds per request and sixty seconds overall to accommodate hosted runner stalls. Production request deadlines and expected HTTP statuses remain unchanged. The failed run is retained at https://github.com/amkargar/GoNex/actions/runs/39394115400/job/118532477381; final candidate results must come from the corrected head.
+
 ## Local corroboration
 
 - `scripts/verify.sh` and root/nested-module tests, vet, build and race passed on patched Go 1.27.2. SQLite CRUD/constraints/rollback and three-process migration/forward-recovery tests passed; local PostgreSQL was unavailable, so hosted results above are authoritative.

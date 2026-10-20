@@ -24,7 +24,7 @@ import (
 func TestProductionAPI(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres"} {
 		t.Run(dialect, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
 			dsn := "file:" + filepath.ToSlash(filepath.Join(t.TempDir(), "orders.db")) + "?_pragma=busy_timeout(3000)"
 			if dialect == "postgres" {
@@ -85,7 +85,10 @@ func TestProductionAPI(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer a.Shutdown(context.Background())
-			client := http.Client{Timeout: 3 * time.Second}
+			// CRUD contract checks are not a runner latency SLO. Windows hosted
+			// runners may pause longer than that budget; keep a bounded
+			// client budget independent of the application's two-second deadline.
+			client := http.Client{Timeout: 10 * time.Second}
 			request := func(method, path, body, token string, status int) map[string]any {
 				t.Helper()
 				r, err := http.NewRequestWithContext(ctx, method, "http://"+a.Address()+path, strings.NewReader(body))
