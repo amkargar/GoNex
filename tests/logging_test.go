@@ -193,3 +193,20 @@ func TestLifecycleLogsRedactResourceCauses(t *testing.T) {
 		t.Fatal("resource cause leaked into default logs", output.String())
 	}
 }
+
+func TestUnknownMethodsAreBoundedInLogs(t *testing.T) {
+	var output bytes.Buffer
+	a, err := app.New(config.Config{Logger: slog.New(slog.NewJSONHandler(&output, nil))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := a.Handler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(strings.Repeat("A", 4096), "/unknown", nil))
+	records := logRecords(t, &output)
+	if len(records) != 1 || records[0]["method"] != "OTHER" || len(output.Bytes()) > 2000 {
+		t.Fatal("unbounded method logging")
+	}
+}

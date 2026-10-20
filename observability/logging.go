@@ -213,7 +213,7 @@ func RequestLog(logger *slog.Logger) gin.HandlerFunc {
 			} else if status >= 400 {
 				level = slog.LevelWarn
 			}
-			attrs := []any{"method", c.Request.Method, "path", path, "status", status, "duration_ms", float64(time.Since(start).Microseconds()) / 1000}
+			attrs := []any{"method", boundedMethod(c.Request.Method), "path", path, "status", status, "duration_ms", float64(time.Since(start).Microseconds()) / 1000}
 			if fault != nil {
 				attrs = append(attrs, "error", "handler panic")
 			} else if code, ok := c.Get("gonex.error"); ok {
@@ -235,4 +235,13 @@ func safeKey(key string) string {
 		}
 	}
 	return key
+}
+
+func boundedMethod(method string) string {
+	switch method {
+	case "GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT":
+		return method
+	default:
+		return "OTHER"
+	}
 }
