@@ -1,5 +1,6 @@
 // Public dependency/tutorial rehearsal. The contracts module is published to a
-// disposable immutable file proxy; no replace directives or go.work are used.
+// disposable immutable file proxy. The isolated deployment stage uses neither
+// replacement directives nor go.work; local first-run builds test go.work explicitly.
 package main
 
 import (

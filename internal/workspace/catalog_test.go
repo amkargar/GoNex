@@ -75,3 +75,23 @@ func TestCyclesAreWarnings(t *testing.T) {
 		t.Fatal("cycle not detected")
 	}
 }
+
+func TestSingleServiceGlobalOverrideDoesNotInventListener(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "services/orders")
+	os.MkdirAll(dir, 0755)
+	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/orders\n"), 0644)
+	c := Catalog{Schema: 1, Services: map[string]Service{"orders": {Path: "services/orders", HTTP: "127.0.0.1:48081"}}}
+	p, e := Resolve(c, root, "orders", false, func(k string) string {
+		if k == "GRPC_ADDRESS" {
+			return "127.0.0.1:49091"
+		}
+		return ""
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if p.Catalog.Services["orders"].GRPC != "" {
+		t.Fatal("global override invented a disabled listener")
+	}
+}

@@ -70,7 +70,7 @@ func Resolve(c Catalog, root, selected string, insecure bool, lookup func(string
 					return p, fmt.Errorf("service %s has no %s listener to override", n, v.key)
 				}
 				*v.dst = address
-			} else if len(p.Names) == 1 && p.Names[0] == n && lookup(v.key) != "" {
+			} else if len(p.Names) == 1 && p.Names[0] == n && *v.dst != "" && lookup(v.key) != "" {
 				*v.dst = lookup(v.key)
 			}
 		}
