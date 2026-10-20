@@ -55,7 +55,7 @@ func Resolve(c Catalog, root, selected string, insecure bool, lookup func(string
 	if len(p.Names) > 1 && (lookup("HTTP_ADDRESS") != "" || lookup("GRPC_ADDRESS") != "") {
 		return p, fmt.Errorf("shared HTTP_ADDRESS/GRPC_ADDRESS is ambiguous; use GONEX_SERVICES_NAME_HTTP_ADDRESS/GRPC_ADDRESS")
 	}
-	if insecure && strings.EqualFold(lookup("GONEX_ENV"), "production") {
+	if insecure && strings.EqualFold(strings.TrimSpace(lookup("GONEX_ENV")), "production") {
 		return p, fmt.Errorf("--dev-insecure is forbidden with GONEX_ENV=production")
 	}
 	for _, n := range c.Names() {
@@ -99,10 +99,13 @@ func Resolve(c Catalog, root, selected string, insecure bool, lookup func(string
 		if s.GRPC != "" {
 			env = append(env, "GRPC_ADDRESS="+s.GRPC)
 			allow := insecure || lookup("GONEX_GRPC_INSECURE") == "1"
-			if strings.EqualFold(lookup("GONEX_ENV"), "production") && allow {
+			if strings.EqualFold(strings.TrimSpace(lookup("GONEX_ENV")), "production") && allow {
 				issue("error", "production_plaintext", n, "", "development insecure flags forbidden in production")
 			}
 			if allow {
+				if lookup("GRPC_TLS_CERT") != "" || lookup("GRPC_TLS_KEY") != "" || lookup("GRPC_CLIENT_CA") != "" {
+					issue("error", "security_flags_conflict", n, "", "unset development insecure flags when server TLS material is configured")
+				}
 				env = append(env, "GONEX_GRPC_INSECURE=1")
 				issue("warning", "dev_plaintext", n, "", "explicit local gRPC plaintext enabled")
 			} else if lookup("GRPC_TLS_CERT") == "" || lookup("GRPC_TLS_KEY") == "" {
@@ -129,10 +132,13 @@ func Resolve(c Catalog, root, selected string, insecure bool, lookup func(string
 			}
 			env = append(env, prefix+"ADDRESS="+address)
 			allow := insecure || lookup(prefix+"INSECURE") == "1"
-			if strings.EqualFold(lookup("GONEX_ENV"), "production") && allow {
+			if strings.EqualFold(strings.TrimSpace(lookup("GONEX_ENV")), "production") && allow {
 				issue("error", "production_plaintext", n, "", "development insecure client flags forbidden in production")
 			}
 			if allow {
+				if lookup(prefix+"CA") != "" || lookup(prefix+"CERT") != "" || lookup(prefix+"KEY") != "" {
+					issue("error", "security_flags_conflict", n, "", "unset development insecure flags when client TLS material is configured")
+				}
 				env = append(env, prefix+"INSECURE=1")
 				issue("warning", "dev_plaintext", n, "", "explicit local client plaintext enabled")
 			} else if lookup(prefix+"CA") == "" {
@@ -194,8 +200,11 @@ func Resolve(c Catalog, root, selected string, insecure bool, lookup func(string
 			}
 			ast.Inspect(tree, func(node ast.Node) bool {
 				if call, ok := node.(*ast.CallExpr); ok {
-					if id, ok := call.Fun.(*ast.Ident); ok {
-						calls[id.Name] = true
+					switch fn := call.Fun.(type) {
+					case *ast.Ident:
+						calls[fn.Name] = true
+					case *ast.SelectorExpr:
+						calls[fn.Sel.Name] = true
 					}
 				}
 				return true

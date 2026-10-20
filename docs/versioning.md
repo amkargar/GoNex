@@ -40,3 +40,7 @@ Create an initially versioned module with `gonex create module catalog --http-ve
 ## Handle custom adapter layouts
 
 Version generation expects the Phase 4 adapter Register signature and generated HTTP registry hook. Custom adapter layouts/signatures may require a manual registration change; conflicts must be resolved before generation. Copying a version does not infer a new business API: edit its schemas and handlers to define the intended compatibility boundary.
+
+## RPC clients
+
+Explicit module/client --version vN creates separate adapters; grpc generate --check checks drift. Multiple versions can share one caller-owned pool/config with generated WithConfig constructors. Unpublished placeholders are not release baselines. See [compatibility](microservices-dx/compatibility.md).

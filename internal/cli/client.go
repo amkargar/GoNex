@@ -192,7 +192,7 @@ func Load%sClient()(%sClientSettings,error){tlsConfig,err:=rpc.ClientTLS(os.Gete
 import("context";"time";"%s/app";rpc "%s/grpc";settings "%s/config")
 // New%sForModule is called once from the caller-owned NewModuleService factory.
 // GONEX_WIRING: assign the returned adapter to your plain-Go business interface.
-func New%sForModule(r *app.Registrar)(result *%sClient,err error){options,err:=settings.Load%sClient();if err!=nil{return nil,err};pool:=rpc.NewClients();defer func(){if err!=nil{ctx,cancel:=context.WithTimeout(context.Background(),time.Second);defer cancel();_ = pool.Shutdown(ctx)}}();client,err:=New%sClient(pool,options.Options());if err!=nil{return nil,err};if err=r.Manage(pool);err!=nil{return nil,err};if err=r.Check(%q,func(ctx context.Context)error{return client.Ready(ctx)});err!=nil{return nil,err};return client,nil}
+func New%sForModule(r *app.Registrar)(result *%sClient,err error){options,err:=settings.Load%sClient();if err!=nil{return nil,err};pool:=rpc.NewClients();defer func(){if err!=nil{ctx,cancel:=context.WithTimeout(context.Background(),time.Second);defer cancel();_ = pool.Close(ctx)}}();client,err:=New%sClient(pool,options.Options());if err!=nil{return nil,err};if err=r.Manage(pool);err!=nil{return nil,err};if err=r.Check(%q,func(ctx context.Context)error{return client.Ready(ctx)});err!=nil{return nil,err};return client,nil}
 `, moduleName, scaffold.Framework, scaffold.Framework, m.Module, title, title, title, title, title, provider+"_"+version)
 	if profile != "raw" {
 		bootstrap = strings.Replace(bootstrap, "GONEX_WIRING:", "GONEX_WIRING_REQUIRED:", 1)

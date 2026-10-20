@@ -54,3 +54,7 @@ Unary and stream recovery returns redacted Internal errors. `grpc.ServerTLS` and
 ## Run Buf checks
 
 Install the pinned official Buf binary with `go run ./internal/tooling/bufinstall .tools`; it verifies the downloaded release checksum. Run `.tools/buf lint contracts/proto` and `.tools/buf breaking contracts/proto --against contracts/baseline.binpb` (use buf.exe on Windows). CI runs these in addition to internal checks. The [runnable Identity/Orders example](../examples/microservices/README.md) includes HTTP-to-gRPC mapping and TLS configuration.
+
+## Local workspace workflow
+
+See [the mapped tutorial](microservices-dx/quickstart.md) for explicit clients and dev/doctor. grpc generate --check verifies official output without project writes. Module/client --version vN selects separate contract adapters; existing mappings are never rewritten.

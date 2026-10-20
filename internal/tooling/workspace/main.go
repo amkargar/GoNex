@@ -107,6 +107,29 @@ func TestBusiness(t *testing.T){got,err:=NewService(fakeIdentity{}).Message(cont
 	b, _ = os.ReadFile(routes)
 	b = bytes.Replace(b, []byte("Status: 200,"), []byte("Status: 200, Errors: []int{503},"), 1)
 	os.WriteFile(routes, b, 0644)
+	if _, err = command(root, env, "go", "mod", "tidy"); err != nil {
+		return err
+	}
+	// First-run path uses the explicit local workspace before publishing contracts.
+	localEnv := merge(env, "GOWORK="+filepath.Join(root, "go.work"), "GOPROXY=off", "GOSUMDB=off")
+	for _, name := range []string{"identity", "orders"} {
+		if _, err = command(filepath.Join(root, "services", name), localEnv, "go", "build", "-mod=readonly", "./..."); err != nil {
+			return fmt.Errorf("local first-run dependency preparation: %w", err)
+		}
+	}
+	fmt.Println("PASS: local first-run builds with root dependency preparation and explicit go.work")
+	// A second contract version must coexist without overwriting the v1 adapter.
+	v1Path := filepath.Join(orders, "modules/orders/identity_client.go")
+	v1Before, _ := os.ReadFile(v1Path)
+	for _, args := range [][]string{{"create", "module", "users_v2", "--service", "identity", "--transport", "grpc", "--version", "v2"}, {"create", "client", "identity", "--service", "orders", "--module", "orders", "--version", "v2", "--profile", "raw"}, {"grpc", "generate", "--check"}} {
+		if err = invoke(root, args...); err != nil {
+			return err
+		}
+	}
+	v1After, _ := os.ReadFile(v1Path)
+	if !bytes.Equal(v1Before, v1After) {
+		return fmt.Errorf("v2 generation changed v1 mapping")
+	}
 	contracts := filepath.Join(root, "contracts")
 	if _, err = command(contracts, env, "go", "mod", "tidy"); err != nil {
 		return err

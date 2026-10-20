@@ -46,3 +46,7 @@ The service.go files import context only (plus domain errors on Identity). Proto
 ## Verify independent modules
 
 Each service is verified independently with `GOWORK=off go test ./...` in its own directory; there is no required root workspace for deployment. Publish resolvable module versions and replace the checkout-only dependency overrides when deploying this example.
+
+## Generate your own services
+
+Follow the [library-installed dev/doctor tutorial](../../docs/microservices-dx/quickstart.md). This advanced checkout example retains labeled source replacements/manual deployment; never copy those replacements into production. The public tutorial smoke separately verifies immutable contracts publication and independently resolved modules.

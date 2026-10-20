@@ -160,6 +160,24 @@ func NewModuleService(r *app.Registrar)(*Service,error){settings,err:=config.Loa
 		data, _ := io.ReadAll(response.Body)
 		t.Fatalf("provider failure: %d %s", response.StatusCode, data)
 	}
+
+	response.Body.Close()
+	launch(t, ctx, filepath.Join(root, "services/identity/identity.exe"), []string{"GRPC_ADDRESS=" + rpcAddress, "GONEX_GRPC_INSECURE=1", "GONEX_DISABLE_HTTP=1"})
+	recoveryDeadline := time.Now().Add(25 * time.Second)
+	for {
+		res, e := client.Get(url)
+		if e == nil {
+			data, _ := io.ReadAll(res.Body)
+			res.Body.Close()
+			if res.StatusCode == 200 && strings.Contains(string(data), `"message":"users"`) {
+				break
+			}
+		}
+		if time.Now().After(recoveryDeadline) {
+			t.Fatal("consumer did not recover its existing pooled connection")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 type process struct {

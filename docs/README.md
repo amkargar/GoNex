@@ -87,3 +87,7 @@ goNex is licensed under the [BSD 3-Clause License](../LICENSE).
 - [Database reliability](database-reliability.md), [observability](observability.md) and [resilience](resilience.md).
 - [Deployment](deployment.md), [promotion checklist](production-checklist.md) and [troubleshooting](troubleshooting.md).
 - [Support policy](support-policy.md) and [security threat model](security-threat-model.md).
+
+- [Microservices: first mapped call](microservices-dx/quickstart.md)
+- [Microservices diagnostics](microservices-dx/troubleshooting.md)
+- [Microservices acceptance](microservices-dx/acceptance.md)

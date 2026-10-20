@@ -24,3 +24,9 @@
 - Compatibility baselines, measured benchmark budgets and gated CI/release workflows.
 
 No release has been published. See [upgrade notes](docs/upgrade.md) for strict DTO validation and template compatibility.
+
+### Microservices developer experience
+
+- Added strict local catalog, explicit listener profiles, doctor and supervised dev.
+- Added descriptor-derived client profiles, bootstrap helpers, version-specific adapters and generation drift checks.
+- Preserved existing paths/TLS/deadlines; added public tutorial and process lifecycle verification.
