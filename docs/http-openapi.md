@@ -14,7 +14,27 @@
 
 ## Register typed endpoints
 
-Use `http.Register(registrar, http.Endpoint[Request, Response]{...})` with named Go structs, explicit method/path, operation ID, success status and handler. Business services return plain Go values; adapters map those into transport schemas. `NoBody` models endpoints without a body.
+Declare routes together and pass typed handler methods directly. Request and response types are inferred from each handler:
+
+```go
+func Register(r transport.EndpointRegistrar, actions Actions) error {
+    h := Handler{Actions: actions}
+    return transport.Routes(r,
+        transport.Post("/users", h.Create).Name("createUser").Errors(409),
+        transport.Get("/users/:id", h.Get).Name("getUser").Errors(404),
+    )
+}
+```
+
+Import `transport "github.com/amkargar/gonex/http"`. A handler has the signature `func(context.Context, Request) (Response, error)`; named structs in `schemas.go` declare the contract. Give every route a unique `.Name(...)` for its OpenAPI operation ID.
+
+`Get`, `Put`, `Patch`, `Head` and `Options` default to 200; `Post` defaults to 201 and `Delete` to 204. Override with `.Status(...)`. A 204 endpoint should return `NoBody`.
+
+Optional metadata stays next to the route: `.Summary(...)`, `.Description(...)`, `.Tags(...)`, `.Errors(...)`, `.Use(...)`, `.Security(requirements, schemes)`, `.MaxBodyBytes(...)` and `.Examples(request, response)`. Middleware runs before binding and validation. Versioned registrars work with the same route declarations.
+
+`Routes` uses the existing typed registration pipeline: validation, binding, request limits, error mapping and OpenAPI remain identical. Return its error from `Module.Register`; the application commits module registration only after all modules succeed. Reusing a declaration to register multiple paths is discouraged; define each route once during startup.
+
+The lower-level `http.Register(registrar, http.Endpoint[Request, Response]{...})` API remains supported for existing applications. Business services return plain Go values; adapters map those into transport schemas.
 
 ## Bind and validate requests
 

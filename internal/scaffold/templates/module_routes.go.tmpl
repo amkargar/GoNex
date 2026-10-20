@@ -5,6 +5,13 @@ import (
  transport "{{.Framework}}/http"
 )
 
-func Register(r transport.EndpointRegistrar,message func(context.Context)(string,error),prefix,suffix string)error{
- return transport.Register(r,transport.Endpoint[Request,Response]{Method:"GET",Path:prefix+"/{{.Name}}",OperationID:"{{.Name}}Message"+suffix,Status:200,Summary:summary,Tags:[]string{"{{.Name}}"},{{if .DB}}Errors:[]int{404,503},{{end}}Handler:Handler{message:message}.Handle})
+func Register(r transport.EndpointRegistrar, message func(context.Context) (string, error), prefix, suffix string) error {
+ h := Handler{message: message}
+ return transport.Routes(r,
+  transport.Get(prefix+"/{{.Name}}", h.Handle).
+   Name("{{.Name}}Message"+suffix).
+   Summary(summary).
+   Tags("{{.Name}}"){{if .DB}}.
+   Errors(404, 503){{end}},
+ )
 }

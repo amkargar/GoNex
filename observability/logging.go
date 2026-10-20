@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/amkargar/gonex/internal/terminal"
 	"github.com/gin-gonic/gin"
 )
 
@@ -49,11 +50,7 @@ func NewLogger(o LogOptions) (*slog.Logger, error) {
 		color := false
 		switch o.Color {
 		case "", "auto":
-			if f, ok := o.Output.(*os.File); ok {
-				if st, err := f.Stat(); err == nil {
-					color = st.Mode()&os.ModeCharDevice != 0 && os.Getenv("TERM") != "dumb" && os.Getenv("NO_COLOR") == ""
-				}
-			}
+			color = terminal.Color(o.Output)
 		case "always":
 			color = true
 		case "never":
@@ -104,35 +101,26 @@ func (h *prettyHandler) WithGroup(name string) slog.Handler {
 }
 func (h *prettyHandler) Handle(_ context.Context, r slog.Record) error {
 	var b strings.Builder
-	label := fmt.Sprintf("%-5s", r.Level.String())
-	if h.color {
-		code := "36"
-		if r.Level >= slog.LevelError {
-			code = "31"
-		} else if r.Level >= slog.LevelWarn {
-			code = "33"
-		}
-		label = "\x1b[" + code + "m" + label + "\x1b[0m"
-	}
-	fmt.Fprintf(&b, "%s  %s  %s", r.Time.Format("15:04:05.000"), label, strconv.Quote(r.Message))
 	attrs := append([]slog.Attr(nil), h.attrs...)
 	r.Attrs(func(a slog.Attr) bool { attrs = append(attrs, h.qualify([]slog.Attr{a})...); return true })
-	if r.Message == "Gonex API server ready" {
+	switch r.Message {
+	case "Gonex API server ready":
+		h.startup(&b, attrs)
+	case "HTTP request":
+		h.request(&b, r, attrs)
+	default:
+		fmt.Fprintf(&b, "%s  %s  %s", r.Time.Format("15:04:05"), h.levelLabel(r.Level), strconv.Quote(r.Message))
 		for _, a := range attrs {
-			b.WriteString("\n    ")
 			writeAttr(&b, "", a)
 		}
-	} else {
-		for _, a := range attrs {
-			writeAttr(&b, "", a)
-		}
+		b.WriteByte('\n')
 	}
-	b.WriteByte('\n')
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	_, err := io.WriteString(h.out, b.String())
 	return err
 }
+
 func writeAttr(b *strings.Builder, prefix string, a slog.Attr) {
 	a.Value = a.Value.Resolve()
 	if a.Equal(slog.Attr{}) {
