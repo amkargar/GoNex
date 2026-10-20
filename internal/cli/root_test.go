@@ -62,3 +62,22 @@ func TestLocalBuildRequiresExplicitVersion(t *testing.T) {
 		t.Fatal("failed resolution wrote files")
 	}
 }
+
+func TestRunCancellationIsNormalStop(t *testing.T) {
+	root := t.TempDir()
+	var out bytes.Buffer
+	if code := Execute(context.Background(), []string{"new", "shop", "--module", "example.com/shop", "--framework-version", "v0.0.0"}, root, &out, &out); code != 0 {
+		t.Fatal(out.String())
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	out.Reset()
+	if code := Execute(ctx, []string{"run"}, filepath.Join(root, "shop"), &out, &out); code != 0 || strings.Contains(out.String(), "gonex:") {
+		t.Fatal(code, out.String())
+	}
+	// Non-cancellation failures must retain their original nonzero outcome.
+	out.Reset()
+	if code := Execute(context.Background(), []string{"run"}, root, &out, &out); code == 0 {
+		t.Fatal("invalid project succeeded")
+	}
+}

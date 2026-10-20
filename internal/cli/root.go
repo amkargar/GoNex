@@ -164,7 +164,13 @@ func (c invocation) execute(args []string) error {
 		}
 		c.dir = root
 		if args[0] == "run" {
-			return c.goTool("run", ".")
+			err := c.goTool("run", ".")
+			// The development command's context is cancelled by Ctrl+C/SIGTERM.
+			// go run can report an exit error even after the application drains.
+			if errors.Is(c.ctx.Err(), context.Canceled) {
+				return nil
+			}
+			return err
 		}
 		if args[0] == "build" {
 			return c.goTool("build", "./...")
