@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/amkargar/gonex/internal/contracts"
 	"github.com/amkargar/gonex/internal/scaffold"
+	"github.com/amkargar/gonex/internal/workspace"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -15,6 +18,10 @@ func (c invocation) create(args []string) error {
 		return fmt.Errorf("usage: gonex create module|service|client NAME")
 	}
 	f := c.flags("create " + args[0])
+	httpEnabled := f.Bool("http", false, "enable HTTP listener for a service")
+	grpcEnabled := f.Bool("grpc", false, "enable gRPC listener for a service")
+	profile := f.String("profile", "skeleton", "client profile: skeleton, example or raw")
+	rpcMethod := f.String("rpc", "", "explicit Service.Method for the example profile")
 	service := f.String("service", "", "workspace service")
 	transport := f.String("transport", "http", "http, none, grpc or http,grpc")
 	httpVersion := f.String("http-version", "", "create an initially versioned HTTP adapter")
@@ -28,10 +35,59 @@ func (c invocation) create(args []string) error {
 	if f.NArg() != 0 {
 		return fmt.Errorf("unexpected arguments")
 	}
+	explicit := map[string]bool{}
+	f.Visit(func(v *flag.Flag) { explicit[v.Name] = true })
+	if args[0] != "service" && (explicit["http"] || explicit["grpc"]) {
+		return fmt.Errorf("--http/--grpc select service listeners; use --transport for a module")
+	}
+	allowed := map[string]bool{"dry-run": true}
+	switch args[0] {
+	case "service":
+		for _, v := range []string{"http", "grpc", "transport"} {
+			allowed[v] = true
+		}
+	case "module":
+		for _, v := range []string{"service", "transport", "db", "http-version", "version"} {
+			allowed[v] = true
+		}
+	case "client":
+		for _, v := range []string{"service", "module", "version", "profile", "rpc"} {
+			allowed[v] = true
+		}
+	}
+	for k := range explicit {
+		if !allowed[k] {
+			return fmt.Errorf("--%s does not apply to create %s", k, args[0])
+		}
+	}
 	var p *scaffold.Plan
 	var err error
 	if args[0] == "service" {
-		p, err = scaffold.CreateService(c.dir, args[1])
+		if *service != "" || *db || explicit["module"] || explicit["version"] || explicit["http-version"] || explicit["profile"] || explicit["rpc"] {
+			return fmt.Errorf("service accepts --http, --grpc or --transport none|http|grpc|http,grpc")
+		}
+		h, g := true, false
+		if explicit["http"] || explicit["grpc"] {
+			h, g = *httpEnabled, *grpcEnabled
+		}
+		if explicit["transport"] {
+			if explicit["http"] || explicit["grpc"] {
+				return fmt.Errorf("choose service --transport or --http/--grpc, not both")
+			}
+			switch *transport {
+			case "none":
+				h, g = false, false
+			case "http":
+				h, g = true, false
+			case "grpc":
+				h, g = false, true
+			case "http,grpc":
+				h, g = true, true
+			default:
+				return fmt.Errorf("invalid service transport")
+			}
+		}
+		p, err = scaffold.CreateServiceWithTransports(c.dir, args[1], h, g)
 	} else {
 		root, e := scaffold.ServiceRoot(c.dir, *service)
 		if e != nil {
@@ -39,12 +95,12 @@ func (c invocation) create(args []string) error {
 		}
 		switch args[0] {
 		case "module":
-			p, err = scaffold.CreateModule(root, args[1], *transport, *db)
+			p, err = scaffold.CreateModuleVersion(root, args[1], *transport, *db, *version)
 			if err == nil && *httpVersion != "" {
 				err = scaffold.VersionNewModule(p, args[1], *httpVersion)
 			}
 		case "client":
-			p, err = c.clientPlan(root, args[1], *module, *version)
+			p, err = c.clientProfilePlan(root, args[1], *module, *version, *profile, *rpcMethod)
 		default:
 			return fmt.Errorf("unknown create target")
 		}
@@ -94,6 +150,9 @@ func (c invocation) completePlan(p *scaffold.Plan, dry bool) error {
 		if err := rebaseWorkspace(p); err != nil {
 			return err
 		}
+	}
+	if err := syncCatalog(p); err != nil {
+		return err
 	}
 	if err := p.Apply(true); err != nil {
 		return err
@@ -167,4 +226,54 @@ func (c invocation) completePlan(p *scaffold.Plan, dry bool) error {
 		}
 	}
 	return c.plan(p, false)
+}
+
+// Catalog is caller-editable local configuration; generator updates use an exact
+// before-image, not ownership hashes, and never touch production credentials.
+func syncCatalog(p *scaffold.Plan) error {
+	owner, _, err := scaffold.Load(p.Root)
+	if err != nil || owner.Architecture != "microservices" {
+		return nil
+	}
+	for _, ch := range p.Changes {
+		if filepath.ToSlash(ch.Path) == workspace.Filename {
+			return nil
+		}
+	}
+	cat, before, err := workspace.Load(p.Root)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	changed := false
+	for _, ch := range p.Changes {
+		if !strings.HasSuffix(filepath.ToSlash(ch.Path), "/.gonex.json") {
+			continue
+		}
+		var m scaffold.Manifest
+		if err = json.Unmarshal(ch.Data, &m); err != nil {
+			return err
+		}
+		s, ok := cat.Services[m.Service]
+		if !ok {
+			continue
+		}
+		for _, mod := range m.Modules {
+			if mod.HasGRPC() && s.GRPC == "" {
+				s.GRPC = m.GRPCAddress
+				changed = true
+			}
+		}
+		cat.Services[m.Service] = s
+	}
+	if changed {
+		b, e := cat.Marshal()
+		if e != nil {
+			return e
+		}
+		p.Changes = append(p.Changes, scaffold.Change{Path: workspace.Filename, Data: b, Before: before, Update: true})
+	}
+	return nil
 }

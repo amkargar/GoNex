@@ -68,3 +68,7 @@ The list above groups responsibilities; the actual source of truth is [go.mod](.
 Prefer small consumer-owned interfaces and explicit constructors over global registries. Keep validation and the exported contract coherent, rather than silently projecting unsupported DTO behavior. Keep migrations explicit and immutable.
 
 Service discovery is static, cancellation is cooperative and generators do not invent business mappings. See [API decisions](api-decisions.md), [upgrade policy](upgrade.md) and [release scope](release.md).
+
+## Local service orchestration
+
+The schema-1 catalog/supervisor own local addresses and process lifetime, not domain construction or discovery. Module factories own injection; adapters perform explicit descriptor/domain mapping. See [ownership and compatibility](microservices-dx/compatibility.md).

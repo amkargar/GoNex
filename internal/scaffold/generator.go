@@ -15,6 +15,8 @@ import (
 var templates embed.FS
 
 type data struct {
+	RPCVersion                                           string
+	DisableHTTP                                          bool
 	HTTPAddress, GRPCAddress, Title, Provider, Contracts string
 	Project, Name, Framework, Version                    string
 	HTTP, DB                                             bool
@@ -71,6 +73,13 @@ func New(root, modulePath, frameworkVersion string) (*Plan, error) {
 }
 
 func CreateModule(root, name, transport string, db bool) (*Plan, error) {
+	return CreateModuleVersion(root, name, transport, db, "v1")
+}
+
+func CreateModuleVersion(root, name, transport string, db bool, version string) (*Plan, error) {
+	if !validRPCVersion(version) {
+		return nil, fmt.Errorf("invalid contract major version")
+	}
 	if err := ValidName(name); err != nil {
 		return nil, err
 	}
@@ -103,6 +112,9 @@ func CreateModule(root, name, transport string, db bool) (*Plan, error) {
 		p.Changes = append(p.Changes, Change{Path: filepath.Join("modules", name, file), Data: content})
 	}
 	entry := Module{Name: name, Transport: transport, DB: db}
+	if entry.HasGRPC() && version != "v1" {
+		entry.GRPCVersion = version
+	}
 	if entry.HasGRPC() {
 		if err = addRPC(p, &m, entry); err != nil {
 			return nil, err
@@ -136,6 +148,9 @@ func CreateModule(root, name, transport string, db bool) (*Plan, error) {
 }
 
 func registry(m Manifest) ([]byte, error) {
+	if m.GRPCEnabled {
+		return render("registry_rpc_gen.go", data{Project: m.Module, Framework: Framework, Modules: m.Modules, GRPCAddress: m.GRPCAddress})
+	}
 	for _, entry := range m.Modules {
 		if entry.HasGRPC() {
 			return render("registry_rpc_gen.go", data{Project: m.Module, Framework: Framework, Modules: m.Modules, GRPCAddress: m.GRPCAddress})

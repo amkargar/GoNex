@@ -49,7 +49,7 @@ func TestMicroservicesGeneratedEndToEnd(t *testing.T) {
 		t.Fatal("enable changed handwritten module")
 	}
 	run(root, "create", "module", "orders", "--service", "orders", "--transport", "http")
-	run(root, "create", "client", "identity", "--service", "orders", "--module", "orders", "--version", "v1")
+	run(root, "create", "client", "identity", "--service", "orders", "--module", "orders", "--version", "v1", "--profile", "raw")
 	if _, err := os.Stat(filepath.Join(root, "services/identity/modules/users/http")); !os.IsNotExist(err) {
 		t.Fatal("gRPC-only module has HTTP adapter")
 	}
@@ -159,6 +159,24 @@ func NewModuleService(r *app.Registrar)(*Service,error){settings,err:=config.Loa
 	if response.StatusCode != 503 || time.Since(started) > 5500*time.Millisecond {
 		data, _ := io.ReadAll(response.Body)
 		t.Fatalf("provider failure: %d %s", response.StatusCode, data)
+	}
+
+	response.Body.Close()
+	launch(t, ctx, filepath.Join(root, "services/identity/identity.exe"), []string{"GRPC_ADDRESS=" + rpcAddress, "GONEX_GRPC_INSECURE=1", "GONEX_DISABLE_HTTP=1"})
+	recoveryDeadline := time.Now().Add(25 * time.Second)
+	for {
+		res, e := client.Get(url)
+		if e == nil {
+			data, _ := io.ReadAll(res.Body)
+			res.Body.Close()
+			if res.StatusCode == 200 && strings.Contains(string(data), `"message":"users"`) {
+				break
+			}
+		}
+		if time.Now().After(recoveryDeadline) {
+			t.Fatal("consumer did not recover its existing pooled connection")
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 

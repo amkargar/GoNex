@@ -73,3 +73,7 @@ Database modules require explicit configuration and migration. HTTP versioning, 
 Use `--dry-run` to inspect a plan. Generators reject existing destinations, invalid names, traversal, symlinks and overwritten handwritten files. Tool-owned registries are hash-checked. Writes use staging and a lock, with rollback on ordinary errors; multi-file updates are not power-loss atomic. Inspect an interrupted `.gonex.lock` before recovery.
 
 A CLI built from a local checkout has no published module version. For framework development only, pass a valid `--framework-version VERSION` explicitly and use your intentional local replacement. Ordinary application development does not need this workflow.
+
+## Independent services
+
+Follow [the mapped microservice tutorial](microservices-dx/quickstart.md). Installation stays library-based, business edits are explicit and dev/doctor follow dependency preparation. Monolith remains the default.

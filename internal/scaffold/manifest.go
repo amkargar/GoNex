@@ -14,19 +14,22 @@ import (
 
 const Framework = "github.com/amkargar/gonex"
 
-// Newly generated contracts use a workspace-local initial version until published.
+// ContractsVersion is the legacy placeholder; new generators require explicit
+// published version selection rather than inserting this unpublished version.
 const ContractsVersion = "v0.1.0"
 const manifestFile = ".gonex.json"
 
 type Module struct {
-	Name      string            `json:"name"`
-	Transport string            `json:"transport"`
-	DB        bool              `json:"db,omitempty"`
-	Versions  []string          `json:"versions,omitempty"`
-	Replace   bool              `json:"replace,omitempty"`
-	Prefixes  map[string]string `json:"prefixes,omitempty"`
+	GRPCVersion string            `json:"grpcVersion,omitempty"`
+	Name        string            `json:"name"`
+	Transport   string            `json:"transport"`
+	DB          bool              `json:"db,omitempty"`
+	Versions    []string          `json:"versions,omitempty"`
+	Replace     bool              `json:"replace,omitempty"`
+	Prefixes    map[string]string `json:"prefixes,omitempty"`
 }
 type Manifest struct {
+	GRPCEnabled      bool              `json:"grpcEnabled,omitempty"`
 	Architecture     string            `json:"architecture,omitempty"`
 	Service          string            `json:"service,omitempty"`
 	Services         []Service         `json:"services,omitempty"`
@@ -38,6 +41,13 @@ type Manifest struct {
 	FrameworkVersion string            `json:"frameworkVersion"`
 	Modules          []Module          `json:"modules"`
 	Owned            map[string]string `json:"owned"`
+}
+
+func (m Module) RPCVersion() string {
+	if m.GRPCVersion != "" {
+		return m.GRPCVersion
+	}
+	return "v1"
 }
 
 func (m Module) HasHTTP() bool { return strings.Contains(m.Transport, "http") }

@@ -103,3 +103,9 @@ New projects use a staged rename. Existing projects use an exclusive lock, stagi
 After selecting a reviewed target, run `go get -tool github.com/amkargar/gonex/cmd/gonex@TARGET` in the application. Resolve its canonical module version with `go list -m github.com/amkargar/gonex`, then run `go tool gonex upgrade --framework-version CANONICAL_VERSION --dry-run` and apply without --dry-run after reviewing it. Finish with go mod tidy, tests and contract comparisons.
 
 Upgrade changes only go.mod tool/require metadata and .gonex.json. It does not migrate handwritten code, replace registries or change SQL schemas. For a microservices workspace run it at the tool root and in each service module deliberately. Restore reviewed go.mod/go.sum and binaries for a rollback; that does not undo migrations. The public consumer CI rehearses a real source-version upgrade and verifies a handwritten marker survives.
+
+## Microservices workflow
+
+create service NAME accepts --http, --grpc, both, or --transport none; no flags retains HTTP defaults. create client accepts --profile skeleton|example|raw and explicit --rpc Service.Method for the limited example contract. Module/client --version vN selects RPC contracts; HTTP versioning remains separate.
+
+doctor [--service NAME] [--dev-insecure] [--json] reports configuration and mapping diagnostics without secrets. dev [--service NAME] [--dev-insecure] [--generate] [--isolated] builds cached dependencies and supervises direct processes. Child failure stops siblings. Generation is explicit; no silent tidy/tool download occurs. Follow [the full tutorial](microservices-dx/quickstart.md).

@@ -88,3 +88,7 @@ Use [GitHub Issues](https://github.com/amkargar/gonex/issues) to report reproduc
 ## License
 
 Gonex is released under the [BSD 3-Clause License](LICENSE).
+
+## Local microservices, explicitly wired
+
+Create independent HTTP/gRPC/worker services with a strict local catalog, typed clients, gonex doctor and gonex dev. Follow the [Orders → Identity tutorial](docs/microservices-dx/quickstart.md); business mapping stays explicit and contracts must be published before isolated deployment. No framework clone or required distributed runtime is needed.
