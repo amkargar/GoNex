@@ -1,6 +1,6 @@
 # Phase 04 acceptance report
 
-Status: **IN_PROGRESS**
+Status: **VERIFIED — declared automated scope**
 
 ## Baseline
 
@@ -14,7 +14,7 @@ observability/metrics.go, observability/logging.go, observability/tracing.go, ob
 
 go test -race ./tests ./observability/...; diagnostic example and HTTP-to-gRPC propagation test
 
-Exact local and hosted results are recorded in evidence.md once executed; absent links are not passing evidence.
+Executed results and exact hosted commits/jobs are linked in [verification evidence](evidence.md).
 
 ## Limits and remaining acceptance actions
 
@@ -22,4 +22,4 @@ No OTLP/span exporter or streaming trace instrumentation is declared. Prometheus
 
 ## Acceptance verdict
 
-The phase remains IN_PROGRESS until its complete specification gates have linked passing evidence. See [final release decision](final-report.md).
+The declared automated acceptance scenarios passed. This verifies the documented scope, not all deployment environments or the overall release. See [final release decision](final-report.md).

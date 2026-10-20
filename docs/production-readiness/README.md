@@ -13,4 +13,4 @@ This directory tracks the attached [implementation specification](plan.md). Impl
 | 7 Release engineering | [phase-07-release.md](phase-07-release.md) |
 | 8 Production-like validation | [phase-08-validation.md](phase-08-validation.md) |
 
-[Final decision and open gates](final-report.md). The initial baseline was e835251029c429b599c10da1b06e71dae37fab05. Existing CI at 645a2f082d7d passed Linux/Windows, race, contracts/integration and live PostgreSQL: https://github.com/amkargar/GoNex/actions/runs/39381858956. That evidence predates this hardening and does not verify the new changes.
+[Verification evidence and exact CI jobs](evidence.md) · [Final decision and open gates](final-report.md). The initial baseline was e835251029c429b599c10da1b06e71dae37fab05. Existing CI at 645a2f082d7d passed Linux/Windows, race, contracts/integration and live PostgreSQL: https://github.com/amkargar/GoNex/actions/runs/39381858956. That evidence predates this hardening and does not verify the new changes.

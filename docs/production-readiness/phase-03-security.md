@@ -14,11 +14,11 @@ http/binding.go, http/binding_fuzz_test.go, security/, tests/security_boundary_t
 
 govulncheck v1.9.0 with explicit reachable-finding gate; gitleaks v8.30.1; 60-second binding fuzz; negative security tests
 
-Exact local and hosted results are recorded in evidence.md once executed; absent links are not passing evidence.
+Executed results, exact commits and hosted jobs are linked in [verification evidence](evidence.md).
 
 ## Limits and remaining acceptance actions
 
-Resolve reachable findings and obtain independent sign-off/private reporting activation. Module-only findings remain in artifacts.
+Initial reachable findings were patched and all-module gates passed. Independent sign-off and private reporting activation remain open. Module/package-level findings remain visible in artifacts.
 
 ## Acceptance verdict
 

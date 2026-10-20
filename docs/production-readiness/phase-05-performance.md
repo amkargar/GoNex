@@ -14,7 +14,7 @@ internal/tooling/loadcheck/, internal/tooling/benchcheck/, benchmarks/scenarios/
 
 five paired benchmark samples; GET/POST/parameter/error workloads; telemetry profile; burst; CPU/heap profiles
 
-Exact local and hosted results are recorded in evidence.md once executed; absent links are not passing evidence.
+Executed results, exact commits and hosted jobs are linked in [verification evidence](evidence.md).
 
 ## Limits and remaining acceptance actions
 

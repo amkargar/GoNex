@@ -14,7 +14,7 @@ examples/production/, production CI, docs/deployment.md, docs/production-checkli
 
 standalone pinned dependency tests, PostgreSQL E2E, authz/validation/CRUD/pagination/filtering, readiness/outage and deployment rehearsal
 
-Exact local and hosted results are recorded in evidence.md once executed; absent links are not passing evidence.
+Executed results, exact commits and hosted jobs are linked in [verification evidence](evidence.md).
 
 ## Limits and remaining acceptance actions
 

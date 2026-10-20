@@ -14,7 +14,7 @@ scripts/verify.sh, scripts/verify.ps1, internal/tooling/consumer/, .github/workf
 
 bash scripts/verify.sh; GONEX_RACE=1; public consumer smoke; hosted quality/consumer jobs
 
-Exact local and hosted results are recorded in evidence.md once executed; absent links are not passing evidence.
+Executed results, exact commits and hosted jobs are linked in [verification evidence](evidence.md).
 
 ## Limits and remaining acceptance actions
 

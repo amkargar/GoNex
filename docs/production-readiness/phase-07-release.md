@@ -14,7 +14,7 @@ OpenAPI/Buf baselines and cross-compiled artifact workflow existed; no stable re
 
 candidate artifact builds/checksums/provenance; official apidiff inventory/checks; clean public installation and source compatibility tests
 
-Exact local and hosted results are recorded in evidence.md once executed; absent links are not passing evidence.
+Executed results, exact commits and hosted jobs are linked in [verification evidence](evidence.md).
 
 ## Limits and remaining acceptance actions
 

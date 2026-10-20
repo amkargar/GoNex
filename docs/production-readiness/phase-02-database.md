@@ -1,6 +1,6 @@
 # Phase 02 acceptance report
 
-Status: **IN_PROGRESS**
+Status: **VERIFIED — declared automated scope**
 
 ## Baseline
 
@@ -14,12 +14,12 @@ orm/database.go, tests/database_reliability_test.go, tests/orm_test.go, PostgreS
 
 go test ./tests -run TestDatabaseReliability; go test ./tests -run TestMigrationProcessesAndRecovery; real PostgreSQL job repeats race suite three times
 
-Exact local and hosted results are recorded in evidence.md once executed; absent links are not passing evidence.
+Executed results and exact hosted commits/jobs are linked in [verification evidence](evidence.md).
 
 ## Limits and remaining acceptance actions
 
-Local PostgreSQL is unavailable in the editor environment; hosted non-skipping DB/fault results are mandatory before VERIFIED.
+The hosted PostgreSQL 16 job passed without critical skips, including repeated fault and cross-process migration tests. Other database versions are not certified. Backups and application-specific forward recovery remain deployment responsibilities.
 
 ## Acceptance verdict
 
-The phase remains IN_PROGRESS until its complete specification gates have linked passing evidence. See [final release decision](final-report.md).
+The declared automated acceptance scenarios passed. This verifies the documented scope, not all deployment environments or the overall release. See [final release decision](final-report.md).
