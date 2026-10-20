@@ -97,3 +97,9 @@ Run from a supported project/workspace, service or contracts root. Generation co
 Generators plan and validate paths and collisions before writes. They reject traversal, symlinks and handwritten-file overwrites, hash-check tool-owned registries and support dry runs. `.gonex.json` records ownership metadata; do not delete it to bypass a conflict.
 
 New projects use a staged rename. Existing projects use an exclusive lock, staging and rollback on ordinary application errors; multi-file updates are not power-loss atomic. After an interrupted process, inspect `.gonex.lock` and proposed changes before recovering. See [getting started](getting-started.md#generator-safety).
+
+## Upgrade dependency and generator metadata
+
+After selecting a reviewed target, run `go get -tool github.com/amkargar/gonex/cmd/gonex@TARGET` in the application. Resolve its canonical module version with `go list -m github.com/amkargar/gonex`, then run `go tool gonex upgrade --framework-version CANONICAL_VERSION --dry-run` and apply without --dry-run after reviewing it. Finish with go mod tidy, tests and contract comparisons.
+
+Upgrade changes only go.mod tool/require metadata and .gonex.json. It does not migrate handwritten code, replace registries or change SQL schemas. For a microservices workspace run it at the tool root and in each service module deliberately. Restore reviewed go.mod/go.sum and binaries for a rollback; that does not undo migrations. The public consumer CI rehearses a real source-version upgrade and verifies a handwritten marker survives.

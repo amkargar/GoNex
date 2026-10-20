@@ -80,3 +80,10 @@ Phase reports are historical engineering records; use the guides above for curre
 
 goNex is licensed under the [BSD 3-Clause License](../LICENSE).
 
+
+## Production hardening
+
+- [Verification](verification.md) and [readiness evidence](production-readiness/README.md).
+- [Database reliability](database-reliability.md), [observability](observability.md) and [resilience](resilience.md).
+- [Deployment](deployment.md), [promotion checklist](production-checklist.md) and [troubleshooting](troubleshooting.md).
+- [Support policy](support-policy.md) and [security threat model](security-threat-model.md).

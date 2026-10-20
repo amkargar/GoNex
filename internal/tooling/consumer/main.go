@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -46,7 +47,7 @@ func run() error {
 		c.Stderr = os.Stderr
 		return c.Run()
 	}
-	if err = command(root, "go", "install", "github.com/amkargar/gonex/cmd/gonex@"+version); err != nil {
+	if err = command(root, "go", "install", "github.com/amkargar/gonex/cmd/gonex@"+bootstrapVersion(version)); err != nil {
 		return err
 	}
 	suffix := ""
@@ -61,11 +62,45 @@ func run() error {
 		return err
 	}
 	app := filepath.Join(root, "shop")
-	for _, args := range [][]string{{"mod", "tidy"}, {"tool", "gonex", "create", "module", "users"}, {"tool", "gonex", "check"}, {"tool", "gonex", "openapi", "generate"}, {"build", "-o", filepath.Join(root, "server"+suffix), "."}} {
+	// Create a real baseline project, preserve a handwritten marker, then update
+	// both the selected tool dependency and the generator's version metadata.
+	for _, args := range [][]string{{"mod", "tidy"}, {"tool", "gonex", "create", "module", "users"}} {
 		if err = command(app, "go", args...); err != nil {
 			return err
 		}
 	}
+	servicePath := filepath.Join(app, "modules", "users", "service.go")
+	old, err := os.ReadFile(servicePath)
+	if err != nil {
+		return err
+	}
+	edited := append(old, []byte("\n// Consumer upgrade rehearsal marker.\n")...)
+	if err = os.WriteFile(servicePath, edited, 0644); err != nil {
+		return err
+	}
+	if err = command(app, "go", "get", "-tool", "github.com/amkargar/gonex/cmd/gonex@"+version); err != nil {
+		return err
+	}
+	resolve := exec.CommandContext(ctx, "go", "list", "-m", "-f", "{{.Version}}", "github.com/amkargar/gonex")
+	resolve.Dir = app
+	resolve.Env = env
+	resolved, err := resolve.Output()
+	if err != nil {
+		return err
+	}
+	if err = command(app, "go", "tool", "gonex", "upgrade", "--framework-version", strings.TrimSpace(string(resolved))); err != nil {
+		return err
+	}
+	for _, args := range [][]string{{"mod", "tidy"}, {"tool", "gonex", "create", "module", "products"}, {"tool", "gonex", "check"}, {"tool", "gonex", "openapi", "generate"}, {"build", "-o", filepath.Join(root, "server"+suffix), "."}} {
+		if err = command(app, "go", args...); err != nil {
+			return err
+		}
+	}
+	after, err := os.ReadFile(servicePath)
+	if err != nil || string(after) != string(edited) {
+		return fmt.Errorf("consumer handwritten source changed during upgrade")
+	}
+
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return err
@@ -115,4 +150,11 @@ func run() error {
 	}
 	fmt.Println("PASS: public install, project-local tool, generated API, health and OpenAPI; version", version)
 	return nil
+}
+
+func bootstrapVersion(_ string) string {
+	if baseline := os.Getenv("GONEX_SMOKE_BASELINE"); baseline != "" {
+		return baseline
+	}
+	return "e835251029c429b599c10da1b06e71dae37fab05"
 }

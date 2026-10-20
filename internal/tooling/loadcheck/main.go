@@ -22,9 +22,15 @@ import (
 	"github.com/amkargar/gonex/app"
 	"github.com/amkargar/gonex/config"
 	apperrors "github.com/amkargar/gonex/errors"
+	rpc "github.com/amkargar/gonex/grpc"
 	transport "github.com/amkargar/gonex/http"
 	"github.com/amkargar/gonex/observability"
+	observedgrpc "github.com/amkargar/gonex/observability/grpc"
+	"github.com/amkargar/gonex/orm"
 	"github.com/gin-gonic/gin"
+	googlegrpc "google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"path/filepath"
 )
 
 type payload struct {
@@ -39,9 +45,37 @@ type parameter struct {
 type result struct {
 	Message string `json:"message"`
 }
-type module struct{}
+type module struct {
+	database *orm.Database
+	rpc      healthpb.HealthClient
+}
 
-func (module) Register(r *app.Registrar) error {
+func (m module) Register(r *app.Registrar) error {
+	if m.database != nil {
+		if err := transport.Register(r, transport.Endpoint[transport.NoBody, result]{Method: "GET", Path: "/database", OperationID: "database", Status: 200, Errors: []int{503}, Handler: func(ctx context.Context, _ transport.NoBody) (result, error) {
+			db, err := m.database.DB()
+			if err != nil {
+				return result{}, err
+			}
+			var value string
+			err = db.WithContext(ctx).Raw("SELECT value FROM load_rows WHERE id = 1").Scan(&value).Error
+			return result{value}, err
+		}}); err != nil {
+			return err
+		}
+	}
+	if m.rpc != nil {
+		if err := transport.Register(r, transport.Endpoint[transport.NoBody, result]{Method: "GET", Path: "/grpc", OperationID: "grpc", Status: 200, Errors: []int{503}, Handler: func(ctx context.Context, _ transport.NoBody) (result, error) {
+			reply, err := m.rpc.Check(ctx, &healthpb.HealthCheckRequest{})
+			if err != nil {
+				return result{}, rpc.FromStatus(err)
+			}
+			return result{reply.Status.String()}, nil
+		}}); err != nil {
+			return err
+		}
+	}
+
 	if err := transport.Register(r, transport.Endpoint[transport.NoBody, result]{Method: "GET", Path: "/get", OperationID: "get", Status: 200, Handler: func(context.Context, transport.NoBody) (result, error) { return result{"hello"}, nil }}); err != nil {
 		return err
 	}
@@ -65,11 +99,15 @@ func run() error {
 	concurrency := flag.Int("concurrency", 16, "concurrent clients, 1..256")
 	limit := flag.Int("requests", 10000, "maximum requests, 1..100000")
 	duration := flag.Duration("duration", 5*time.Second, "maximum run duration, up to five minutes")
-	scenario := flag.String("scenario", "get", "get, post, params, error")
+	scenario := flag.String("scenario", "get", "get, post, params, error, database, grpc")
 	telemetry := flag.Bool("telemetry", false, "include completion logs to discard plus trace/metrics cost (excludes disk IO)")
 	cpu := flag.String("cpu", "", "optional CPU profile path")
 	heap := flag.String("heap", "", "optional heap profile path")
+	rate := flag.Int("rate", 0, "optional global requests/second, 0 is unpaced")
 	flag.Parse()
+	if *rate < 0 || *rate > 100000 {
+		return fmt.Errorf("invalid request rate")
+	}
 	if *concurrency < 1 || *concurrency > 256 || *limit < 1 || *limit > 100000 || *duration <= 0 || *duration > 5*time.Minute {
 		return fmt.Errorf("invalid bounded load configuration")
 	}
@@ -77,7 +115,7 @@ func run() error {
 	method := "GET"
 	status := 200
 	switch *scenario {
-	case "get":
+	case "get", "database", "grpc":
 	case "post":
 		method = "POST"
 		status = 201
@@ -97,7 +135,55 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if err = a.Register(module{}); err != nil {
+	work := module{}
+	if *scenario == "database" {
+		dir, err := os.MkdirTemp("", "gonex-load-db-")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(dir)
+		db, err := orm.Open(context.Background(), orm.Options{Dialect: "sqlite", DSN: "file:" + filepath.ToSlash(filepath.Join(dir, "load.db")) + "?_pragma=busy_timeout(3000)"})
+		if err != nil {
+			return err
+		}
+		defer db.Close(context.Background())
+		sql, _ := db.SQL()
+		if _, err = sql.Exec("CREATE TABLE load_rows(id INTEGER PRIMARY KEY,value TEXT); INSERT INTO load_rows VALUES (1,'hello')"); err != nil {
+			return err
+		}
+		work.database = db
+	}
+	if *scenario == "grpc" {
+		options := rpc.ServerOptions{Address: "127.0.0.1:0", DevelopmentInsecure: true}
+		metrics := observability.NewMetrics()
+		if *telemetry {
+			options.Interceptors = []googlegrpc.UnaryServerInterceptor{observedgrpc.Server(metrics)}
+		}
+		server, err := rpc.NewServer(options)
+		if err != nil {
+			return err
+		}
+		if err = server.Start(context.Background()); err != nil {
+			return err
+		}
+		defer server.Close(context.Background())
+		pool := rpc.NewClients()
+		defer pool.Close(context.Background())
+		clientOptions := rpc.ClientOptions{Target: server.Address(), DevelopmentInsecure: true}
+		if *telemetry {
+			clientOptions.Interceptors = []googlegrpc.UnaryClientInterceptor{observedgrpc.Client(metrics)}
+		}
+		clientConfig, err := rpc.NewClientConfig(clientOptions)
+		if err != nil {
+			return err
+		}
+		client, err := rpc.Client(pool, clientConfig, healthpb.NewHealthClient)
+		if err != nil {
+			return err
+		}
+		work.rpc = client
+	}
+	if err = a.Register(work); err != nil {
 		return err
 	}
 	handler, err := a.Handler()
@@ -127,6 +213,39 @@ func run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), *duration)
 	defer cancel()
 	started := time.Now()
+	var pace <-chan time.Time
+	if *rate > 0 {
+		ticker := time.NewTicker(time.Second / time.Duration(*rate))
+		defer ticker.Stop()
+		pace = ticker.C
+	}
+	type memorySample struct {
+		Seconds    float64 `json:"seconds"`
+		Heap       uint64  `json:"heap"`
+		Goroutines int     `json:"goroutines"`
+	}
+	var memoryMu sync.Mutex
+	memory := []memorySample{}
+	memoryDone := make(chan struct{})
+	memoryStopped := make(chan struct{})
+	go func() {
+		defer close(memoryStopped)
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-memoryDone:
+				return
+			case <-ticker.C:
+				var stats runtime.MemStats
+				runtime.ReadMemStats(&stats)
+				memoryMu.Lock()
+				memory = append(memory, memorySample{time.Since(started).Seconds(), stats.HeapAlloc, runtime.NumGoroutine()})
+				memoryMu.Unlock()
+			}
+		}
+	}()
+
 	var next atomic.Int64
 	var wg sync.WaitGroup
 	type sample struct {
@@ -139,6 +258,13 @@ func run() error {
 			for {
 				if ctx.Err() != nil || next.Add(1) > int64(*limit) {
 					return
+				}
+				if pace != nil {
+					select {
+					case <-pace:
+					case <-ctx.Done():
+						return
+					}
 				}
 				var body io.Reader
 				if method == "POST" {
@@ -178,6 +304,8 @@ func run() error {
 		}
 		latencies = append(latencies, float64(sample.latency.Microseconds())/1000)
 	}
+	close(memoryDone)
+	<-memoryStopped
 	elapsed := time.Since(started)
 	transportClient.CloseIdleConnections()
 	server.Close()
@@ -199,7 +327,7 @@ func run() error {
 	}
 	sort.Float64s(latencies)
 	quantile := func(q float64) float64 { return latencies[int(float64(len(latencies)-1)*q)] }
-	report := map[string]any{"scenario": *scenario, "telemetry": *telemetry, "samples": len(latencies), "errors": failures, "deadline_cancellations": cancelled, "error_rate": float64(failures) / float64(len(latencies)), "duration_seconds": elapsed.Seconds(), "throughput_rps": float64(len(latencies)) / elapsed.Seconds(), "p50_ms": quantile(.5), "p95_ms": quantile(.95), "p99_ms": quantile(.99), "go": runtime.Version(), "os": runtime.GOOS, "arch": runtime.GOARCH, "cpus": runtime.NumCPU(), "concurrency": *concurrency, "heap_before": before.HeapAlloc, "heap_after_gc": after.HeapAlloc, "goroutines_before": beforeG, "goroutines_after": runtime.NumGoroutine(), "commit": os.Getenv("GITHUB_SHA")}
+	report := map[string]any{"scenario": *scenario, "rate": *rate, "memory_series": memory, "telemetry": *telemetry, "samples": len(latencies), "errors": failures, "deadline_cancellations": cancelled, "error_rate": float64(failures) / float64(len(latencies)), "duration_seconds": elapsed.Seconds(), "throughput_rps": float64(len(latencies)) / elapsed.Seconds(), "p50_ms": quantile(.5), "p95_ms": quantile(.95), "p99_ms": quantile(.99), "go": runtime.Version(), "os": runtime.GOOS, "arch": runtime.GOARCH, "cpus": runtime.NumCPU(), "concurrency": *concurrency, "heap_before": before.HeapAlloc, "heap_after_gc": after.HeapAlloc, "goroutines_before": beforeG, "goroutines_after": runtime.NumGoroutine(), "commit": os.Getenv("GITHUB_SHA")}
 	if err = json.NewEncoder(os.Stdout).Encode(report); err != nil {
 		return err
 	}

@@ -51,7 +51,7 @@ func (m module) Register(r *app.Registrar) error {
 func main() {
 	gin.SetMode(gin.ReleaseMode)
 	metrics := observability.NewMetrics()
-	a, err := gonex.New(config.Config{Name: "diagnostics", Middleware: []gin.HandlerFunc{observability.HTTP(metrics)}})
+	a, err := gonex.New(config.Config{Name: "diagnostics", Address: os.Getenv("HTTP_ADDRESS"), Middleware: []gin.HandlerFunc{observability.HTTP(metrics)}})
 	if err != nil {
 		log.Fatal(err)
 	}

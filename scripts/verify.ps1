@@ -5,7 +5,9 @@ $env:GIN_MODE = 'release'
 function Invoke-Go { & go @args; if ($LASTEXITCODE -ne 0) { throw "go $args failed ($LASTEXITCODE)" } }
 $format = & gofmt -l .
 if ($LASTEXITCODE -ne 0 -or $format) { throw "Run gofmt: $format" }
-foreach ($module in @('.', 'contracts', 'integration/rpc', 'examples/microservices/services/identity', 'examples/microservices/services/orders')) {
+$modules = @('.', 'contracts', 'integration/rpc', 'examples/microservices/services/identity', 'examples/microservices/services/orders')
+if (Test-Path examples/production/go.mod) { $modules += 'examples/production' }
+foreach ($module in $modules) {
     Invoke-Go -C $module mod verify
     Invoke-Go -C $module test ./...
     Invoke-Go -C $module vet ./...

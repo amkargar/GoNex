@@ -17,12 +17,14 @@ jobs:
     uses: ./.github/workflows/security.yml
   performance:
     uses: ./.github/workflows/performance.yml
+  production:
+    uses: ./.github/workflows/production.yml
   build:
     permissions:
       contents: read
       id-token: write
       attestations: write
-    needs: [verify, contracts, security, performance]
+    needs: [verify, contracts, security, performance, production]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -31,6 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
         with:
@@ -42,12 +45,12 @@ jobs:
           GOARCH: ${{ matrix.arch }}
           CGO_ENABLED: '0'
           RELEASE_REF: ${{ github.ref_name }}
-          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           TZ: UTC
         run: |
           version="$RELEASE_REF"
           if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][a-zA-Z0-9.-]+)?$ ]]; then
-            version="v0.0.0-$(git show -s --format=%cd --date=format-local:%Y%m%d%H%M%S HEAD)-${COMMIT_SHA:0:12}"
+            version=$(go list -m -f '{{.Version}}' "github.com/amkargar/gonex@$COMMIT_SHA")
           fi
           suffix=''
           if [ "$GOOS" = windows ]; then suffix='.exe'; fi

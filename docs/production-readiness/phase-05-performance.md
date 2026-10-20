@@ -18,7 +18,7 @@ Exact local and hosted results are recorded in evidence.md once executed; absent
 
 ## Limits and remaining acceptance actions
 
-Short probes are not long soak or deployment-hardware certification. Controlled gRPC/DB latency and statistically stable historical baseline remain open.
+Short probes are not long soak or deployment-hardware certification. Loopback gRPC and pooled SQLite profiles plus a paced one-minute soak are implemented; controlled deployment/PostgreSQL/TLS latency and a statistically stable historical baseline remain open.
 
 ## Acceptance verdict
 

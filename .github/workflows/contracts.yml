@@ -1,9 +1,8 @@
 name: Contracts
 on:
   push:
-    paths: ['contracts/**', 'internal/contracts/**', '.github/workflows/contracts.yml']
+    branches: [main]
   pull_request:
-    paths: ['contracts/**', 'internal/contracts/**', '.github/workflows/contracts.yml']
   workflow_dispatch:
   workflow_call:
 

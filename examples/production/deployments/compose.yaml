@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gonex
+      POSTGRES_DB: gonex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set a disposable database password}
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U gonex -d gonex]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - orders-data:/var/lib/postgresql/data
+  migrate:
+    image: gonex-production:local
+    command: [migrate]
+    environment:
+      DATABASE_DIALECT: postgres
+      DATABASE_URL: postgres://gonex:${POSTGRES_PASSWORD}@postgres:5432/gonex?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api:
+    image: gonex-production:local
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+    environment:
+      HTTP_ADDRESS: 0.0.0.0:8080
+      GONEX_ENV: production
+      DATABASE_DIALECT: postgres
+      DATABASE_URL: postgres://gonex:${POSTGRES_PASSWORD}@postgres:5432/gonex?sslmode=disable
+      GONEX_ADMIN_TOKEN: ${GONEX_ADMIN_TOKEN:?set an admin token}
+      GONEX_READER_TOKEN: ${GONEX_READER_TOKEN:?set a separate reader token}
+    ports:
+      - 127.0.0.1:8080:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, /api, healthcheck]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 15s
+volumes:
+  orders-data:

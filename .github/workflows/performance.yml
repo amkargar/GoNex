@@ -24,10 +24,12 @@ jobs:
       - name: Record environment
         run: |
           mkdir -p .tools/performance
-          go version > .tools/performance/environment.txt
-          uname -a >> .tools/performance/environment.txt
-          lscpu >> .tools/performance/environment.txt
-          git rev-parse HEAD >> .tools/performance/environment.txt
+          {
+            go version
+            uname -a
+            lscpu
+            git rev-parse HEAD
+          } > .tools/performance/environment.txt
       - name: Paired core benchmarks
         shell: bash
         run: |
@@ -38,11 +40,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for scenario in get post params error; do
+          for scenario in get post params error database grpc; do
             go run ./internal/tooling/loadcheck -scenario="$scenario" -requests=10000 -duration=5s -concurrency=16 > ".tools/performance/$scenario.json"
           done
           go run ./internal/tooling/loadcheck -telemetry -requests=10000 -duration=5s -concurrency=16 -cpu=.tools/performance/cpu.pprof -heap=.tools/performance/heap.pprof > .tools/performance/telemetry.json
           go run ./internal/tooling/loadcheck -requests=100000 -duration=30s -concurrency=128 > .tools/performance/burst.json
+          go run ./internal/tooling/loadcheck -requests=20000 -duration=60s -rate=200 -concurrency=16 > .tools/performance/soak.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
