@@ -21,6 +21,7 @@ func renderError(c *gin.Context, err error, allowed []int) {
 	status := 500
 	response := ErrorResponse{Code: "internal", Message: "internal server error"}
 	if errors.Is(err, context.DeadlineExceeded) {
+		c.Set("gonex.error", "timeout")
 		c.JSON(504, ErrorResponse{Code: "timeout", Message: "request timed out"})
 		return
 	}
@@ -52,5 +53,6 @@ func renderError(c *gin.Context, err error, allowed []int) {
 			status = 500
 		}
 	}
+	c.Set("gonex.error", response.Code)
 	c.JSON(status, response)
 }

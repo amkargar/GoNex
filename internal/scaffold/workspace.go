@@ -21,14 +21,16 @@ func NewMicroservices(root, modulePath, version string) (*Plan, error) {
 	if err := ValidModule(modulePath); err != nil {
 		return nil, err
 	}
-	if version == "" {
-		version = Version
-	}
 	if err := ValidFrameworkVersion(version); err != nil {
 		return nil, err
 	}
 	m := Manifest{Format: 1, Module: modulePath, FrameworkVersion: version, Architecture: "microservices", ContractsModule: modulePath + "/contracts", Modules: []Module{}, Services: []Service{}, Owned: map[string]string{}}
 	p := &Plan{Root: root, New: true}
+	toolmod, err := render("go.mod", data{Project: modulePath, Framework: Framework, Version: version})
+	if err != nil {
+		return nil, err
+	}
+	p.Changes = append(p.Changes, Change{Path: "go.mod", Data: toolmod})
 	p.Changes = append(p.Changes, contractsFiles("contracts", m.ContractsModule)...)
 	work := workspace(m)
 	p.Changes = append(p.Changes, Change{Path: "go.work", Data: work})
@@ -41,7 +43,7 @@ func NewMicroservices(root, modulePath, version string) (*Plan, error) {
 }
 func workspace(m Manifest) []byte {
 	var b strings.Builder
-	b.WriteString("go 1.27.1\n\nuse (\n ./contracts\n")
+	b.WriteString("go 1.27.1\n\nuse (\n .\n ./contracts\n")
 	for _, s := range m.Services {
 		fmt.Fprintf(&b, " ./services/%s\n", s.Name)
 	}

@@ -29,7 +29,7 @@ func TestMicroservicesGeneratedEndToEnd(t *testing.T) {
 			t.Fatalf("gonex %v (%d): %s", args, code, &out)
 		}
 	}
-	run(base, "new", "commerce", "--module", "example.com/acme/commerce", "--arch", "microservices")
+	run(base, "new", "commerce", "--module", "example.com/acme/commerce", "--arch", "microservices", "--framework-version", "v0.0.0")
 	run(root, "create", "service", "identity")
 	run(root, "create", "service", "orders")
 	run(root, "create", "module", "users", "--service", "identity", "--transport", "grpc", "--dry-run")

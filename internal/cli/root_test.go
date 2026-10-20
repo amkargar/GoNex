@@ -14,6 +14,9 @@ func TestCLI(t *testing.T) {
 	var out bytes.Buffer
 	run := func(dir string, args ...string) int {
 		out.Reset()
+		if len(args) > 0 && args[0] == "new" {
+			args = append(args, "--framework-version", "v0.0.0")
+		}
 		return Execute(context.Background(), args, dir, &out, &out)
 	}
 	if code := run(base, "--help"); code != 0 || !strings.Contains(out.String(), "new NAME") {
@@ -46,5 +49,16 @@ func TestCLI(t *testing.T) {
 	}
 	if code := run(base, "unknown"); code == 0 {
 		t.Fatal("unknown command succeeded")
+	}
+}
+
+func TestLocalBuildRequiresExplicitVersion(t *testing.T) {
+	var out bytes.Buffer
+	root := t.TempDir()
+	if code := Execute(context.Background(), []string{"new", "shop", "--module", "example.com/shop"}, root, &out, &out); code == 0 || !strings.Contains(out.String(), "--framework-version") {
+		t.Fatal(code, out.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, "shop")); !os.IsNotExist(err) {
+		t.Fatal("failed resolution wrote files")
 	}
 }

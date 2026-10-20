@@ -3,3 +3,6 @@ module {{.Project}}
 go 1.27.1
 
 require {{.Framework}} {{.Version}}
+
+// Project-local development CLI; not linked into the application binary.
+tool {{.Framework}}/cmd/gonex

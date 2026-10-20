@@ -22,7 +22,7 @@ type benchmarkResponse struct {
 func BenchmarkComparisonHTTP(b *testing.B) {
 	bare := gin.New()
 	bare.GET("/bench", func(c *gin.Context) { c.JSON(200, benchmarkResponse{Message: "hello"}) })
-	a, e := app.New(config.Config{DisableOpenAPI: true})
+	a, e := app.New(config.Config{DisableOpenAPI: true, DisableRequestLogging: true})
 	if e != nil {
 		b.Fatal(e)
 	}

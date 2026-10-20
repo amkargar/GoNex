@@ -13,7 +13,9 @@ import (
 )
 
 const Framework = "github.com/amkargar/gonex"
-const Version = "v0.1.0"
+
+// Newly generated contracts use a workspace-local initial version until published.
+const ContractsVersion = "v0.1.0"
 const manifestFile = ".gonex.json"
 
 type Module struct {

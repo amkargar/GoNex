@@ -44,9 +44,6 @@ func New(root, modulePath, frameworkVersion string) (*Plan, error) {
 	if err := ValidModule(modulePath); err != nil {
 		return nil, err
 	}
-	if frameworkVersion == "" {
-		frameworkVersion = Version
-	}
 	if err := ValidFrameworkVersion(frameworkVersion); err != nil {
 		return nil, err
 	}

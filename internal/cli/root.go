@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	transport "github.com/amkargar/gonex/http"
+	"github.com/amkargar/gonex/internal/buildinfo"
 	"github.com/amkargar/gonex/internal/scaffold"
 	"github.com/amkargar/gonex/migration"
 	"github.com/amkargar/gonex/openapi"
@@ -20,10 +21,19 @@ import (
 	"time"
 )
 
-var Version = "v0.1.0-dev"
+// Version may be set by release builds with -ldflags. Module build metadata takes precedence.
+var Version = "development"
+
+func version() string {
+	v := buildinfo.Version()
+	if v == "development" {
+		return Version
+	}
+	return v
+}
 
 const help = `
-  new NAME --module IMPORT_PATH [--arch monolith|microservices] [--dry-run]
+  new NAME --module IMPORT_PATH [--framework-version VERSION] [--arch monolith|microservices] [--dry-run]
   create module NAME [--service NAME] [--transport http|none|grpc|http,grpc] [--db] [--dry-run]
   create service NAME [--dry-run]
   create client PROVIDER --service CONSUMER --module MODULE [--version v1] [--dry-run]
@@ -47,17 +57,17 @@ type invocation struct {
 func Execute(ctx context.Context, args []string, dir string, out, errout io.Writer) int {
 	for _, arg := range args {
 		if arg == "--help" {
-			fmt.Fprintf(out, "gonex %s%s", Version, help)
+			fmt.Fprintf(out, "gonex %s%s", version(), help)
 			return 0
 		}
 	}
 	c := invocation{ctx: ctx, dir: dir, out: out, errout: errout}
 	if len(args) == 0 || args[0] == "--help" || args[0] == "help" {
-		fmt.Fprintf(out, "gonex %s%s", Version, help)
+		fmt.Fprintf(out, "gonex %s%s", version(), help)
 		return 0
 	}
 	if args[0] == "--version" {
-		fmt.Fprintln(out, Version)
+		fmt.Fprintln(out, version())
 		return 0
 	}
 	err := c.execute(args)
@@ -109,7 +119,7 @@ func (c invocation) execute(args []string) error {
 		}
 		f := c.flags("new")
 		module := f.String("module", "", "Go module path")
-		version := f.String("framework-version", scaffold.Version, "framework module version")
+		version := f.String("framework-version", "", "framework module version (defaults to the installed CLI version)")
 		arch := f.String("arch", "monolith", "monolith or microservices")
 		dry := f.Bool("dry-run", false, "show plan only")
 		if err := f.Parse(args[2:]); err != nil {
@@ -117,6 +127,15 @@ func (c invocation) execute(args []string) error {
 		}
 		if f.NArg() != 0 {
 			return fmt.Errorf("unexpected arguments")
+		}
+		if *version == "" {
+			*version = buildinfo.Version()
+			if *version == "development" {
+				*version = Version
+			}
+		}
+		if scaffold.ValidFrameworkVersion(*version) != nil {
+			return fmt.Errorf("cannot determine a resolvable Gonex version; install a versioned CLI or pass --framework-version with a Go module version")
 		}
 		p, err := scaffold.New(filepath.Join(c.dir, args[1]), *module, *version)
 		if *arch == "microservices" {

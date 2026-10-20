@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const Version = "v0.0.0" // fixture only; generated build tests use an explicit local replacement.
+
 func project(t *testing.T) string {
 	t.Helper()
 	root := filepath.Join(t.TempDir(), "shop")

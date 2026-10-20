@@ -5,8 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/amkargar/gonex/internal/buildinfo"
+	"github.com/amkargar/gonex/observability"
+	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"sort"
 	"sync"
 
@@ -134,7 +138,11 @@ func (a *App) handler() (http.Handler, error) {
 			}}})
 		}
 	}
-	return transport.Build(routes, a.config.Middleware...)
+	middleware := append([]gin.HandlerFunc(nil), a.config.Middleware...)
+	if !a.config.DisableRequestLogging {
+		middleware = append([]gin.HandlerFunc{observability.RequestLog(a.config.Logger)}, middleware...)
+	}
+	return transport.Build(routes, middleware...)
 }
 
 func (a *App) OpenAPI() ([]byte, error) {
@@ -172,6 +180,7 @@ func (a *App) Start(ctx context.Context) error {
 		defer cancel()
 		err = errors.Join(err, a.closeResources(cleanup))
 		a.state = Stopped
+		a.config.Logger.ErrorContext(ctx, "server startup failed", "error", err)
 		close(a.done)
 		return err
 	}
@@ -204,6 +213,7 @@ func (a *App) Start(ctx context.Context) error {
 	}
 	if a.config.DisableHTTP {
 		a.state = Running
+		a.logStarted(ctx)
 		return nil
 	}
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", a.config.Address)
@@ -220,6 +230,7 @@ func (a *App) Start(ctx context.Context) error {
 		}
 		a.serveErr <- err
 	}()
+	a.logStarted(ctx)
 	return nil
 }
 
@@ -235,6 +246,9 @@ func (a *App) Run(ctx context.Context) error {
 	}
 	stop, cancel := context.WithTimeout(context.Background(), a.config.ShutdownTimeout)
 	defer cancel()
+	if err != nil {
+		a.config.Logger.ErrorContext(ctx, "server failed", "error", err)
+	}
 	return errors.Join(err, a.Shutdown(stop))
 }
 
@@ -255,6 +269,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 	a.state = Stopping
 	server := a.server
 	a.mu.Unlock()
+	a.config.Logger.InfoContext(ctx, "server stopping")
 	var err error
 	if server != nil {
 		err = server.Shutdown(ctx)
@@ -268,6 +283,11 @@ func (a *App) Shutdown(ctx context.Context) error {
 	a.state = Stopped
 	close(a.done)
 	a.mu.Unlock()
+	if err != nil {
+		a.config.Logger.ErrorContext(ctx, "server shutdown failed", "error", err)
+	} else {
+		a.config.Logger.InfoContext(ctx, "server stopped")
+	}
 	return err
 }
 
@@ -278,4 +298,38 @@ func (a *App) closeResources(ctx context.Context) error {
 	}
 	a.started = nil
 	return err
+}
+
+// Logger is shared by lifecycle events and application code. It is never global.
+func (a *App) Logger() *slog.Logger { return a.config.Logger }
+
+func (a *App) logStarted(ctx context.Context) {
+	if a.config.DisableStartupBanner {
+		return
+	}
+	attrs := []any{"name", a.config.Name, "version", buildinfo.Version(), "environment", a.config.Environment}
+	if !a.config.DisableHTTP {
+		host, port, _ := net.SplitHostPort(a.address)
+		if host == "" || host == "0.0.0.0" || host == "::" {
+			host = "localhost"
+		}
+		local := (&url.URL{Scheme: "http", Host: net.JoinHostPort(host, port)}).String()
+		attrs = append(attrs, "url", local, "listen", a.address)
+		if !a.config.DisableOpenAPI {
+			attrs = append(attrs, "openapi", local+"/openapi.json")
+			seen := map[string]bool{}
+			for _, r := range a.registrar.routes {
+				if r.Contract != nil && r.Contract.Version != "" && !seen[r.Contract.Version] {
+					v := r.Contract.Version
+					seen[v] = true
+					attrs = append(attrs, "openapi_"+v, local+"/openapi/"+v+".json")
+				}
+			}
+			if a.config.DocsEnabled {
+				attrs = append(attrs, "docs", local+"/docs")
+			}
+		}
+	}
+	attrs = append(attrs, "stop", "Ctrl+C")
+	a.config.Logger.InfoContext(ctx, "Gonex API server ready", attrs...)
 }

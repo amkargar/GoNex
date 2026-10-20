@@ -21,7 +21,7 @@ func dependency(old []byte, path string) ([]byte, error) {
 			return old, nil
 		}
 	}
-	if err = f.AddRequire(path, Version); err != nil {
+	if err = f.AddRequire(path, ContractsVersion); err != nil {
 		return nil, err
 	}
 	return f.Format()

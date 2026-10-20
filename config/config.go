@@ -3,11 +3,18 @@ package config
 
 import (
 	"fmt"
+	"github.com/amkargar/gonex/observability"
 	"github.com/gin-gonic/gin"
+	"log/slog"
 	"time"
 )
 
 type Config struct {
+	Name, Environment                                       string
+	Logger                                                  *slog.Logger
+	LogLevel, LogFormat, LogColor                           string
+	DisableRequestLogging                                   bool
+	DisableStartupBanner                                    bool
 	Middleware                                              []gin.HandlerFunc
 	DisableHTTP                                             bool
 	DisableOpenAPI                                          bool
@@ -17,6 +24,19 @@ type Config struct {
 }
 
 func (c Config) Normalize() (Config, error) {
+	if c.Name == "" {
+		c.Name = "Gonex"
+	}
+	if c.Environment == "" {
+		c.Environment = "development"
+	}
+	if c.Logger == nil {
+		var err error
+		c.Logger, err = observability.NewLogger(observability.LogOptions{Environment: c.Environment, Level: c.LogLevel, Format: c.LogFormat, Color: c.LogColor})
+		if err != nil {
+			return c, err
+		}
+	}
 	for _, middleware := range c.Middleware {
 		if middleware == nil {
 			return c, fmt.Errorf("nil HTTP middleware")
