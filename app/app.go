@@ -194,7 +194,7 @@ func (a *App) Start(ctx context.Context) error {
 		a.state = Stopped
 		close(a.done)
 		a.mu.Unlock()
-		a.config.Logger.ErrorContext(ctx, "server startup failed", "error", err)
+		a.config.Logger.ErrorContext(ctx, "server startup failed", "error", "startup_failed")
 		return errors.Join(err, cleanupErr)
 	}
 	if err := startCtx.Err(); err != nil {
@@ -273,7 +273,7 @@ func (a *App) Run(ctx context.Context) error {
 	stop, cancel := context.WithTimeout(context.Background(), a.config.ShutdownTimeout)
 	defer cancel()
 	if err != nil {
-		a.config.Logger.ErrorContext(ctx, "server failed", "error", err)
+		a.config.Logger.ErrorContext(ctx, "server failed", "error", "resource_failed")
 	}
 	return errors.Join(err, a.Shutdown(stop))
 }
@@ -328,7 +328,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 	close(a.done)
 	a.mu.Unlock()
 	if err != nil {
-		a.config.Logger.ErrorContext(ctx, "server shutdown failed", "error", err)
+		a.config.Logger.ErrorContext(ctx, "server shutdown failed", "error", "shutdown_failed")
 	} else {
 		a.config.Logger.InfoContext(ctx, "server stopped")
 	}
