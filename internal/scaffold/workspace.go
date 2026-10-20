@@ -3,8 +3,11 @@ package scaffold
 import (
 	"encoding/json"
 	"fmt"
+	catalog "github.com/amkargar/gonex/internal/workspace"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -32,6 +35,7 @@ func NewMicroservices(root, modulePath, version string) (*Plan, error) {
 	}
 	p.Changes = append(p.Changes, Change{Path: "go.mod", Data: toolmod})
 	p.Changes = append(p.Changes, contractsFiles("contracts", m.ContractsModule)...)
+	p.Changes = append(p.Changes, Change{Path: catalog.Filename, Data: []byte("schema: 1\nservices: {}\n")})
 	work := workspace(m)
 	p.Changes = append(p.Changes, Change{Path: "go.work", Data: work})
 	m.Owned["go.work"] = hash(work)
@@ -59,6 +63,10 @@ func contractsFiles(prefix, modulePath string) []Change {
 }
 
 func CreateService(root, name string) (*Plan, error) {
+	return CreateServiceWithTransports(root, name, true, false)
+}
+
+func CreateServiceWithTransports(root, name string, httpEnabled, grpcEnabled bool) (*Plan, error) {
 	if _, err := os.Lstat(filepath.Join(root, "services", name)); !os.IsNotExist(err) {
 		return nil, fmt.Errorf("service destination already exists")
 	}
@@ -77,7 +85,53 @@ func CreateService(root, name string) (*Plan, error) {
 			return nil, fmt.Errorf("service already exists")
 		}
 	}
-	service := Service{Name: name, HTTPAddress: fmt.Sprintf("127.0.0.1:%d", 8081+len(m.Services)), GRPCAddress: fmt.Sprintf("127.0.0.1:%d", 9091+len(m.Services))}
+	cat, catBefore, err := catalog.Load(root)
+	if os.IsNotExist(err) {
+		cat = catalog.Catalog{Schema: 1, Services: map[string]catalog.Service{}}
+		for _, s := range m.Services {
+			cat.Services[s.Name] = catalog.Service{Path: "services/" + s.Name, HTTP: s.HTTPAddress}
+		}
+	} else if err != nil {
+		return nil, err
+	}
+	used := map[int]bool{}
+	for _, s := range cat.Services {
+		for _, a := range []string{s.HTTP, s.GRPC} {
+			_, port, _ := net.SplitHostPort(a)
+			v, _ := strconv.Atoi(port)
+			used[v] = true
+		}
+	}
+	next := func(start int) (string, error) {
+		for v := start; v <= 65535; v++ {
+			if !used[v] {
+				used[v] = true
+				return fmt.Sprintf("127.0.0.1:%d", v), nil
+			}
+		}
+		return "", fmt.Errorf("no local ports available")
+	}
+	httpAddress, err := next(8081)
+	if err != nil {
+		return nil, err
+	}
+	grpcAddress, err := next(9091)
+	if err != nil {
+		return nil, err
+	}
+	service := Service{Name: name, HTTPAddress: httpAddress, GRPCAddress: grpcAddress}
+	local := catalog.Service{Path: "services/" + name}
+	if httpEnabled {
+		local.HTTP = httpAddress
+	}
+	if grpcEnabled {
+		local.GRPC = grpcAddress
+	}
+	cat.Services[name] = local
+	catalogData, err := cat.Marshal()
+	if err != nil {
+		return nil, err
+	}
 	child, err := New(filepath.Join(root, "services", name), m.Module+"/services/"+name, m.FrameworkVersion)
 	if err != nil {
 		return nil, err
@@ -92,19 +146,39 @@ func CreateService(root, name string) (*Plan, error) {
 			childManifest.ContractsModule = m.ContractsModule
 			childManifest.ContractsDir = "../../contracts"
 			childManifest.GRPCAddress = service.GRPCAddress
+			childManifest.GRPCEnabled = grpcEnabled
+			if grpcEnabled {
+				childManifest.Owned["modules/registry_gen.go"] = ""
+			}
 			child.Changes[i].Data, err = json.MarshalIndent(childManifest, "", "  ")
 			if err != nil {
 				return nil, err
 			}
 		}
 		if c.Path == "config/config.go" {
-			child.Changes[i].Data, err = render("config.go", data{Framework: Framework, HTTPAddress: service.HTTPAddress})
+			child.Changes[i].Data, err = render("config.go", data{Framework: Framework, HTTPAddress: service.HTTPAddress, DisableHTTP: !httpEnabled})
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
+	if grpcEnabled {
+		registryData, e := registry(childManifest)
+		if e != nil {
+			return nil, e
+		}
+		childManifest.Owned["modules/registry_gen.go"] = hash(registryData)
+		for i := range child.Changes {
+			if child.Changes[i].Path == "modules/registry_gen.go" {
+				child.Changes[i].Data = registryData
+			}
+			if child.Changes[i].Path == manifestFile {
+				child.Changes[i].Data, _ = json.MarshalIndent(childManifest, "", "  ")
+			}
+		}
+	}
 	p := &Plan{Root: root}
+	p.Changes = append(p.Changes, Change{Path: catalog.Filename, Data: catalogData, Before: catBefore, Update: catBefore != nil})
 	for _, c := range child.Changes {
 		c.Path = filepath.Join("services", name, c.Path)
 		p.Changes = append(p.Changes, c)

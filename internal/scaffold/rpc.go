@@ -48,19 +48,19 @@ func addRPC(p *Plan, m *Manifest, entry Module) error {
 			return err
 		}
 	}
-	d := data{Framework: Framework, Project: m.Module, Name: entry.Name, Title: title(entry.Name), Provider: m.Service, Contracts: m.ContractsModule}
+	d := data{Framework: Framework, Project: m.Module, Name: entry.Name, Title: title(entry.Name), Provider: m.Service, Contracts: m.ContractsModule, RPCVersion: entry.RPCVersion()}
 	for _, name := range []string{"server.go", "mapper.go"} {
 		content, err := render("rpc_"+name, d)
 		if err != nil {
 			return err
 		}
-		p.Changes = append(p.Changes, Change{Path: filepath.Join("modules", entry.Name, "grpc", "v1", name), Data: content})
+		p.Changes = append(p.Changes, Change{Path: filepath.Join("modules", entry.Name, "grpc", entry.RPCVersion(), name), Data: content})
 	}
 	content, err := render("module.proto", d)
 	if err != nil {
 		return err
 	}
-	p.Changes = append(p.Changes, Change{Path: filepath.Join(m.ContractsDir, "proto", m.Service, "v1", entry.Name+".proto"), Data: content})
+	p.Changes = append(p.Changes, Change{Path: filepath.Join(m.ContractsDir, "proto", m.Service, entry.RPCVersion(), entry.Name+".proto"), Data: content})
 	return AddDependency(p, m.ContractsModule)
 }
 
@@ -142,4 +142,16 @@ func ContractsPath(root string) (string, error) {
 		return filepath.Join(root, "contracts"), nil
 	}
 	return "", fmt.Errorf("no contracts module configured")
+}
+
+func validRPCVersion(v string) bool {
+	if len(v) < 2 || v[0] != 'v' || v[1] == '0' {
+		return false
+	}
+	for _, r := range v[1:] {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }

@@ -19,12 +19,14 @@ jobs:
     uses: ./.github/workflows/performance.yml
   production:
     uses: ./.github/workflows/production.yml
+  microservices:
+    uses: ./.github/workflows/microservices-dx.yml
   build:
     permissions:
       contents: read
       id-token: write
       attestations: write
-    needs: [verify, contracts, security, performance, production]
+    needs: [verify, contracts, security, performance, production, microservices]
     runs-on: ubuntu-latest
     strategy:
       matrix:

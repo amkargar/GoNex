@@ -6,7 +6,7 @@ import (
  "{{.Framework}}/app"
  rpc "{{.Framework}}/grpc"
  {{range .Modules}}feature_{{.Name}} "{{$.Project}}/modules/{{.Name}}"
- {{if .HasGRPC}}transport_{{.Name}} "{{$.Project}}/modules/{{.Name}}/grpc/v1"{{end}}
+ {{if .HasGRPC}}transport_{{.Name}} "{{$.Project}}/modules/{{.Name}}/grpc/{{.RPCVersion}}"{{end}}
  {{end}}
 )
 

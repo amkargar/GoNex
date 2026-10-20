@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/amkargar/gonex/internal/contracts"
 	"github.com/amkargar/gonex/internal/scaffold"
@@ -15,9 +16,13 @@ func (c invocation) grpc(args []string) error {
 		return fmt.Errorf("usage: gonex grpc generate|check [--dry-run]")
 	}
 	f := c.flags("grpc")
+	check := f.Bool("check", false, "verify generated artifacts without writes (plugins must be installed/cached)")
 	dry := f.Bool("dry-run", false, "compile/check only; no plugins or writes")
 	if err := f.Parse(args[1:]); err != nil {
 		return err
+	}
+	if *check && (*dry || args[0] != "generate") {
+		return fmt.Errorf("--check applies to grpc generate and cannot combine with --dry-run")
 	}
 	if f.NArg() != 0 {
 		return fmt.Errorf("unexpected arguments")
@@ -50,6 +55,15 @@ func (c invocation) grpc(args []string) error {
 	}
 	if *dry {
 		fmt.Fprintln(c.out, "dry run: contracts compile; would run", contracts.GoPlugin, "and", contracts.GRPCPlugin)
+		return nil
+	}
+	if *check {
+		for _, change := range p.Changes {
+			if !change.Update || !bytes.Equal(change.Before, change.Data) {
+				return fmt.Errorf("generated artifact drift: %s; run gonex grpc generate", change.Path)
+			}
+		}
+		fmt.Fprintln(c.out, "generated gRPC artifacts match")
 		return nil
 	}
 	return c.plan(p, false)

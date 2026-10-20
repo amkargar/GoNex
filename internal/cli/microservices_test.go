@@ -49,7 +49,7 @@ func TestMicroservicesGeneratedEndToEnd(t *testing.T) {
 		t.Fatal("enable changed handwritten module")
 	}
 	run(root, "create", "module", "orders", "--service", "orders", "--transport", "http")
-	run(root, "create", "client", "identity", "--service", "orders", "--module", "orders", "--version", "v1")
+	run(root, "create", "client", "identity", "--service", "orders", "--module", "orders", "--version", "v1", "--profile", "raw")
 	if _, err := os.Stat(filepath.Join(root, "services/identity/modules/users/http")); !os.IsNotExist(err) {
 		t.Fatal("gRPC-only module has HTTP adapter")
 	}
