@@ -39,6 +39,9 @@ func run() error {
 		return err
 	}
 	defer os.RemoveAll(base)
+	// Each publication rehearsal gets a fresh module namespace. Shared CI module
+	// caches must never reuse a fixture version whose contract content changed.
+	projectModule := "example.com/gonex-rehearsal/" + filepath.Base(base)
 	bin := filepath.Join(base, "bin")
 	os.MkdirAll(bin, 0755)
 	env := merge(os.Environ(), "GOWORK=off", "GOBIN="+bin, "GOTOOLCHAIN=local", "GOFLAGS=-p=2")
@@ -64,7 +67,7 @@ func run() error {
 		_, e := command(dir, env, append([]string{cli}, args...)...)
 		return e
 	}
-	if err = invoke(base, "new", "commerce", "--module", "example.com/acme/commerce", "--arch", "microservices"); err != nil {
+	if err = invoke(base, "new", "commerce", "--module", projectModule, "--arch", "microservices"); err != nil {
 		return err
 	}
 	root := filepath.Join(base, "commerce")
@@ -135,7 +138,7 @@ func TestBusiness(t *testing.T){got,err:=NewService(fakeIdentity{}).Message(cont
 		return err
 	}
 	proxy := filepath.Join(base, "proxy")
-	module := "example.com/acme/commerce/contracts"
+	module := projectModule + "/contracts"
 	version := "v0.1.0"
 	dir := filepath.Join(proxy, filepath.FromSlash(module), "@v")
 	os.MkdirAll(dir, 0755)
