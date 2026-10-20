@@ -77,3 +77,14 @@ A CLI built from a local checkout has no published module version. For framework
 ## Independent services
 
 Follow [the mapped microservice tutorial](microservices-dx/quickstart.md). Installation stays library-based, business edits are explicit and dev/doctor follow dependency preparation. Monolith remains the default.
+
+
+## Development welcome and error pages
+
+Set `DEBUG=true` in your application process, then run `go tool gonex run`.
+Visit the server's root URL for the Gonex duck welcome page when no application
+route handles `/`. Browser error pages show returned errors, panics and route
+diagnostics. JSON API responses keep their existing contracts.
+
+Debugging defaults to off. Use `DEBUG=false` on public deployments.
+See [development pages](debug.md) for shell examples and behavior.

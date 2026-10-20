@@ -17,10 +17,11 @@ jobs:
       - name: Verify formatting and template fixture
         shell: bash
         run: |
-          gofmt -w internal/terminal/style.go internal/cli/help.go internal/cli/root.go internal/cli/build.go internal/cli/help_test.go internal/cli/build_test.go http/routes.go http/routes_test.go observability/logging.go observability/console.go observability/console_test.go examples/basic/modules/users/http/handlers.go examples/basic/modules/users/http/routes.go internal/tooling/clismoke/main.go
+          gofmt -w internal/terminal/style.go internal/cli/help.go internal/cli/root.go internal/cli/build.go internal/cli/help_test.go internal/cli/build_test.go http/routes.go http/routes_test.go observability/logging.go observability/console.go observability/console_test.go examples/basic/modules/users/http/handlers.go examples/basic/modules/users/http/routes.go internal/tooling/clismoke/main.go internal/debugui/page.go http/debug.go http/router.go app/app.go config/config.go http/response.go http/endpoint.go tests/debug_test.go
           git diff --exit-code
           go test ./internal/scaffold -run '^TestTemplateGolden$' -count=1
       - run: go test ./http ./internal/cli ./observability
+      - run: go test ./tests -run '^TestDebug' -count=1
   executables:
     strategy:
       fail-fast: false

@@ -18,6 +18,7 @@ type ErrorResponse struct {
 }
 
 func renderError(c *gin.Context, err error, allowed []int) {
+	recordDebugError(c, err)
 	status := 500
 	response := ErrorResponse{Code: "internal", Message: "internal server error"}
 	if errors.Is(err, context.DeadlineExceeded) {

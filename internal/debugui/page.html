@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>{{if .Welcome}}Welcome to Gonex{{else}}{{.Status}} · {{.Title}}{{end}}</title>
+<style>
+:root{color-scheme:light dark;--paper:#faf9f3;--surface:#fff;--ink:#20231c;--soft:#697061;--line:#e4e5d9;--yellow:#f6d44d;--wash:#f5efcf}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.7 system-ui,-apple-system,sans-serif}
+.wrap{width:min(1000px,calc(100% - 40px));margin:auto}header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:26px 0;border-bottom:1px solid var(--line)}.brand{font-weight:800;letter-spacing:2px;font-size:20px}.badge{font:11px/1.6 ui-monospace,monospace;padding:5px 10px;border:1px solid var(--line);border-radius:20px;background:var(--wash)}main{padding:55px 0 40px}.welcome{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:center;gap:35px;min-height:60vh}.eyebrow{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--soft);text-transform:uppercase}h1{font-size:clamp(36px,6vw,66px);line-height:1.09;letter-spacing:-2.5px;margin:18px 0 23px}p{color:var(--soft);max-width:540px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin:28px 0}.button{display:inline-flex;padding:11px 18px;border-radius:8px;border:1px solid var(--line);font-weight:650;text-decoration:none;color:var(--ink);background:var(--surface)}.primary{background:var(--yellow);color:#20231c;border-color:var(--yellow)}.duck{width:100%;max-width:370px;height:auto;filter:drop-shadow(0 25px 40px #e8c94528)}.small{font-size:12px}.muted{color:var(--soft)}code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.panel{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:24px;margin-top:22px;min-width:0;overflow-wrap:anywhere}.error-title{font-size:clamp(30px,5vw,48px);letter-spacing:-1.5px}.error-code{font:12px ui-monospace,monospace;color:var(--soft)}.message{white-space:pre-wrap;margin:0;color:var(--ink);overflow-wrap:anywhere}h2{font-size:17px;margin:0 0 15px;font-weight:650}.meta{display:grid;grid-template-columns:110px minmax(0,1fr);gap:9px 18px;font-size:13px;margin:0}.meta dt{color:var(--soft)}.meta dd{margin:0;overflow-wrap:anywhere}summary{cursor:pointer;font-weight:650}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.8;margin-bottom:0}.routes{list-style:none;padding:0;margin:0}.routes li{display:grid;grid-template-columns:80px minmax(0,1fr);gap:16px;padding:7px 0;border-bottom:1px solid var(--line);font:12px/1.7 ui-monospace,monospace}.routes li:last-child{border:0}footer{border-top:1px solid var(--line);padding:22px 0 32px;font-size:12px;color:var(--soft)}a{color:inherit;text-underline-offset:3px}.inline-duck{width:64px;height:auto;float:right;margin-left:15px}a:focus-visible,summary:focus-visible{outline:3px solid var(--yellow);outline-offset:4px}
+@media(prefers-color-scheme:dark){:root{--paper:#151811;--surface:#1d2118;--ink:#eef0e6;--soft:#b0b6a5;--line:#343b2b;--wash:#35301c}}
+@media(max-width:650px){main{padding-top:35px}.welcome{grid-template-columns:1fr;gap:5px;min-height:auto}.welcome figure{margin:0;text-align:center}.duck{max-width:240px}h1{letter-spacing:-1.5px}.panel{padding:18px}.meta{grid-template-columns:1fr;gap:3px}.meta dd{margin-bottom:10px}.badge{font-size:10px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><span class="brand">GONEX<span class="muted">.</span></span><span class="badge">DEVELOPMENT · DEBUG=true</span></header>
+<main>
+{{if .Welcome}}
+<section class="welcome">
+<div><span class="eyebrow">Your API starts here</span><h1>Welcome to Gonex.</h1>
+<p>Your application is running. Build your first typed endpoint, explore the docs, and make something yours.</p>
+<div class="actions"><a class="button primary" href="https://amkargar.github.io/GoNex-website/docs/main/">Read the documentation ↗</a><a class="button" href="https://amkargar.github.io/GoNex-website/">Gonex website ↗</a></div>
+{{if .OpenAPI}}<p class="small"><a href="/openapi.json">Explore your OpenAPI contract →</a></p>{{end}}
+<p class="small muted">This page appears because DEBUG=true and your app has no matching route for GET /. Add your own root route to replace it.</p>
+</div>
+<figure><img class="duck" src="/_gonex/debug/duck.webp" width="420" height="388" alt="The yellow Gonex duck mascot"></figure>
+</section>
+{{else}}
+<img class="inline-duck" src="/_gonex/debug/duck.webp" width="64" height="59" alt="">
+<span class="eyebrow">Request failed</span><h1 class="error-title">{{.Title}}</h1><div class="error-code">{{.Status}} · {{.Method}} {{.Path}}</div>
+<section class="panel"><h2>{{if .ErrorType}}{{.ErrorType}}{{else}}Error details{{end}}</h2><pre class="message">{{.Message}}</pre></section>
+<section class="panel"><h2>Request</h2><dl class="meta"><dt>Method</dt><dd>{{.Method}}</dd><dt>Path</dt><dd>{{.Path}}</dd><dt>Route</dt><dd>{{if .Matched}}{{.Matched}}{{else}}No matching route{{end}}</dd>{{if .RequestID}}<dt>Request ID</dt><dd><code>{{.RequestID}}</code></dd>{{end}}</dl></section>
+{{if .Stack}}<details class="panel" open><summary>Stack trace</summary><pre>{{.Stack}}</pre></details>{{end}}
+{{if .Routes}}<details class="panel" {{if eq .Status 404}}open{{end}}><summary>Registered routes</summary><ul class="routes">{{range .Routes}}<li><span>{{.Method}}</span><span>{{.Path}}</span></li>{{end}}</ul></details>{{end}}
+<div class="actions"><a class="button primary" href="https://amkargar.github.io/GoNex-website/docs/main/">Documentation ↗</a><a class="button" href="/">Back to your app</a></div>
+{{end}}
+</main>
+<footer>{{.Name}} · Gonex {{.Version}}<br>Development page · Set DEBUG=false to disable these pages and hide diagnostic details.</footer>
+</div>
+</body></html>

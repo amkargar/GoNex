@@ -81,6 +81,7 @@ func Register[I, O any](r EndpointRegistrar, e Endpoint[I, O]) (err error) {
 			return
 		}
 		if err := validation.Struct(input); err != nil {
+			recordDebugError(c, err)
 			fields := []FieldError{}
 			if failures, ok := err.(validator.ValidationErrors); ok {
 				for _, f := range failures {
@@ -112,6 +113,7 @@ func Register[I, O any](r EndpointRegistrar, e Endpoint[I, O]) (err error) {
 		}
 		data, err := json.Marshal(output)
 		if err != nil {
+			recordDebugError(c, err)
 			c.Set("gonex.error", "response_encoding")
 			c.JSON(500, ErrorResponse{Code: "internal", Message: "internal server error"})
 			return

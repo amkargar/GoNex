@@ -145,6 +145,9 @@ func (a *App) handler() (http.Handler, error) {
 	if !a.config.DisableRequestLogging {
 		middleware = append([]gin.HandlerFunc{observability.RequestLog(a.config.Logger)}, middleware...)
 	}
+	if a.config.Debug {
+		return transport.BuildDebug(routes, transport.DebugConfig{Name: a.config.Name, Version: buildinfo.Version(), OpenAPI: !a.config.DisableOpenAPI}, middleware...)
+	}
 	return transport.Build(routes, middleware...)
 }
 
@@ -351,7 +354,7 @@ func (a *App) logStarted(ctx context.Context) {
 	if a.config.DisableStartupBanner {
 		return
 	}
-	attrs := []any{"name", a.config.Name, "version", buildinfo.Version()}
+	attrs := []any{"name", a.config.Name, "version", buildinfo.Version(), "debug", a.config.Debug}
 	if !a.config.DisableHTTP {
 		host, port, _ := net.SplitHostPort(a.address)
 		if host == "" || host == "0.0.0.0" || host == "::" {

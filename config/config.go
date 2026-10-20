@@ -13,6 +13,7 @@ type Config struct {
 	Name, Environment                                       string
 	Logger                                                  *slog.Logger
 	LogLevel, LogFormat, LogColor                           string
+	Debug                                                   bool
 	DisableRequestLogging                                   bool
 	DisableStartupBanner                                    bool
 	Middleware                                              []gin.HandlerFunc
