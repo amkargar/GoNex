@@ -14,7 +14,8 @@ import (
 
 const Framework = "github.com/amkargar/gonex"
 
-// Newly generated contracts use a workspace-local initial version until published.
+// ContractsVersion is the legacy placeholder; new generators require explicit
+// published version selection rather than inserting this unpublished version.
 const ContractsVersion = "v0.1.0"
 const manifestFile = ".gonex.json"
 

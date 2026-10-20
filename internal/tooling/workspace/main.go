@@ -105,7 +105,7 @@ func TestBusiness(t *testing.T){got,err:=NewService(fakeIdentity{}).Message(cont
 	os.WriteFile(factory, b, 0644)
 	routes := filepath.Join(orders, "modules/orders/http/routes.go")
 	b, _ = os.ReadFile(routes)
-	b = bytes.Replace(b, []byte("Status: 200,"), []byte("Status: 200, Errors: []int{503},"), 1)
+	b = bytes.Replace(b, []byte("Status: 200,"), []byte("Status: 200, Errors: []int{503,504},"), 1)
 	os.WriteFile(routes, b, 0644)
 	if _, err = command(root, env, "go", "mod", "tidy"); err != nil {
 		return err
@@ -165,7 +165,7 @@ func TestBusiness(t *testing.T){got,err:=NewService(fakeIdentity{}).Message(cont
 		if e != nil || bytes.Contains(mod, []byte("replace")) {
 			return fmt.Errorf("service has replacement or missing module")
 		}
-		for _, args := range [][]string{{"mod", "tidy"}, {"test", "./..."}, {"vet", "./..."}, {"build", "./..."}} {
+		for _, args := range [][]string{{"get", module + "@" + version}, {"mod", "tidy"}, {"test", "./..."}, {"vet", "./..."}, {"build", "./..."}} {
 			if _, err = command(dir, env, append([]string{"go"}, args...)...); err != nil {
 				return err
 			}

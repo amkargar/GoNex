@@ -185,9 +185,8 @@ func Load%sClient()(%sClientSettings,error){tlsConfig,err:=rpc.ClientTLS(os.Gete
 		return nil, err
 	}
 	p := &scaffold.Plan{Root: root, Changes: []scaffold.Change{{Path: filepath.Join("modules", moduleName, provider+suffix+"_client.go"), Data: adapter}, {Path: filepath.Join("config", "clients_"+provider+suffix+".go"), Data: config}}}
-	if err = scaffold.AddDependency(p, m.ContractsModule); err != nil {
-		return nil, err
-	}
+	// Dependency publication/version selection is explicit; local contracts
+	// resolve through go.work without a fake release requirement.
 	bootstrap := fmt.Sprintf(`package %s
 import("context";"time";"%s/app";rpc "%s/grpc";settings "%s/config")
 // New%sForModule is called once from the caller-owned NewModuleService factory.

@@ -114,6 +114,7 @@ func Supervise(ctx context.Context, o Options) error {
 			out.flush()
 			errout.flush()
 			owner.kill()
+			owner.settle()
 			close(p.done)
 			events <- p
 		}()

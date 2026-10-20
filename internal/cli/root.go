@@ -49,6 +49,13 @@ const help = `
   db migrate | db status [--dry-run]
   grpc generate [--check] [--dry-run] | grpc check
 Generators refuse handwritten overwrites. Run project commands from its root.
+Example: gonex new commerce --module example.com/acme/commerce --arch microservices
+Then: go mod tidy; go tool gonex create service identity --grpc
+      go tool gonex create service orders --http
+Read docs/microservices-dx/quickstart.md for the explicit mapped client edits,
+then run go tool gonex doctor --dev-insecure and go tool gonex dev --dev-insecure.
+Exit 0: success/help; exit 1: validation/generation/startup failure.
+Child Go commands may propagate their own non-zero exit status.
 `
 
 type invocation struct {

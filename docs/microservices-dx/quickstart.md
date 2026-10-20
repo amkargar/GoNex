@@ -58,11 +58,11 @@ func NewModuleService(r *app.Registrar) (*Service, error) {
 
 The generated helper creates one managed pool/config for this target, constructs the exact typed client, registers connection readiness and cleans up on helper failure. It does not choose your domain interface or alter your handwritten factory. Call it once in that factory. For multiple modules/versions, own the service bootstrap explicitly: share a managed rpc.NewClients pool and rpc.NewClientConfig, then use the generated NewIdentityClientWithConfig/NewIdentityV2ClientWithConfig constructors. Do not call multiple convenience helpers for the same target/security profile.
 
-In services/orders/modules/orders/http/routes.go, add `Errors: []int{503},` to the Endpoint literal, so the API explicitly declares provider-unavailable responses. Adapt the generated service_test.go to the constructor you now own (inject a fake IdentityReader); the generator does not rewrite that test. These are application edits; no framework-owned registry needs manual changes.
+In services/orders/modules/orders/http/routes.go, add `Errors: []int{503, 504},` to the Endpoint literal, so the API explicitly declares provider-unavailable responses. Adapt the generated service_test.go to the constructor you now own (inject a fake IdentityReader); the generator does not rewrite that test. These are application edits; no framework-owned registry needs manual changes.
 
 ## Run locally
 
-The explicit root `go mod tidy` above prepares the CLI/framework dependencies. The generated go.work resolves the new local contracts source for the initial local build; no contracts release is needed for this first run. Do not run service-level go mod tidy against an unpublished placeholder contract version: tidy ignores workspace replacement for resolving that module. Publication and isolated builds are a separate, explicit step below.
+The explicit root `go mod tidy` above prepares the CLI/framework dependencies. The generated go.work resolves local contracts source for the initial build. New services do not require a fictional contracts release, so no publication is needed for this first run. Service-level go mod tidy requires an actual published contracts version because tidy resolves that module independently of go.work. Prepare the root CLI module for initial local builds. Publication and isolated builds are a separate, explicit step below.
 
 ```sh
 go tool gonex doctor --dev-insecure
@@ -89,7 +89,7 @@ Use GONEX_SERVICES_IDENTITY_GRPC_ADDRESS or GONEX_SERVICES_ORDERS_HTTP_ADDRESS t
 
 ## Publish contracts and deploy independently
 
-The generated v0.1.0 contracts requirement is an **unpublished placeholder**, not a released Gonex contract. Publish contracts as a real Go module using your own repository/subdirectory tags or an immutable Go module proxy. Set the actual published version in each consuming service's go.mod, then explicitly tidy/test/build each service with GOWORK=off. Deployment must not use a local replace or require the workspace.
+New generators do not insert an unpublished contracts requirement. Older templates may contain a v0.1.0 placeholder; it is not a released Gonex contract. Publish contracts as a real Go module using your own repository/subdirectory tags or an immutable Go module proxy. Set the actual published version in each consuming service's go.mod, then explicitly tidy/test/build each service with GOWORK=off. Deployment must not use a local replace or require the workspace.
 
 ```sh
 # Run inside each consuming service, after publishing the actual contract version.

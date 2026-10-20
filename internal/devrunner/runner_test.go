@@ -102,11 +102,18 @@ func TestSuperviseCancellationRepeatedAndTree(t *testing.T) {
 			t.Fatal("runner did not stop")
 		}
 		for _, target := range []string{a, child} {
-			l, e := net.Listen("tcp", target)
-			if e != nil {
-				t.Fatal("orphan listener", e)
+			until := time.Now().Add(2 * time.Second)
+			for {
+				l, e := net.Listen("tcp", target)
+				if e == nil {
+					l.Close()
+					break
+				}
+				if time.Now().After(until) {
+					t.Fatal("orphan listener after bounded OS cleanup", e)
+				}
+				time.Sleep(10 * time.Millisecond)
 			}
-			l.Close()
 		}
 		if !strings.Contains(out.String(), "[identity] helper ready") || !strings.Contains(out.String(), "[identity stderr] diagnostic") {
 			t.Fatal("output not prefixed", out.String())

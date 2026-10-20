@@ -42,3 +42,5 @@ func (p *processOwner) interrupt() {
 }
 func (p *processOwner) kill()  { _ = windows.TerminateJobObject(p.job, 1) }
 func (p *processOwner) close() { windows.CloseHandle(p.job) }
+
+func (p *processOwner) settle() {} // Closing the owned Job Object terminates its remaining processes.

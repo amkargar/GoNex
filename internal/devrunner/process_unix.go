@@ -5,6 +5,7 @@ package devrunner
 import (
 	"os/exec"
 	"syscall"
+	"time"
 )
 
 type processOwner struct{ cmd *exec.Cmd }
@@ -25,3 +26,19 @@ func (p *processOwner) kill() {
 	}
 }
 func (p *processOwner) close() {}
+
+// Group signals are asynchronous. Allow the kernel to finish descendants before
+// returning from cleanup; zombies have no open sockets and need not be reaped
+// by this CLI, which deliberately does not become a global subreaper.
+func (p *processOwner) settle() {
+	if p.cmd.Process == nil {
+		return
+	}
+	until := time.Now().Add(250 * time.Millisecond)
+	for time.Now().Before(until) {
+		if syscall.Kill(-p.cmd.Process.Pid, 0) == syscall.ESRCH {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+}

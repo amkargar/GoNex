@@ -61,7 +61,9 @@ func addRPC(p *Plan, m *Manifest, entry Module) error {
 		return err
 	}
 	p.Changes = append(p.Changes, Change{Path: filepath.Join(m.ContractsDir, "proto", m.Service, entry.RPCVersion(), entry.Name+".proto"), Data: content})
-	return AddDependency(p, m.ContractsModule)
+	// Local contracts are workspace members. Do not insert an unpublished
+	// placeholder requirement; deployment selects a real published version explicitly.
+	return nil
 }
 
 func EnableGRPC(root, name string) (*Plan, error) {
