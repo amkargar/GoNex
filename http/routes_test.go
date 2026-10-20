@@ -70,8 +70,8 @@ func TestRouteDeclarationsPreserveTypedBehavior(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		method string
-		path string
-		body string
+		path   string
+		body   string
 		status int
 	}{
 		{"POST", "/users", `{"name":"Ada"}`, 201},
@@ -100,8 +100,8 @@ func TestRouteDeclarationsPreserveTypedBehavior(t *testing.T) {
 	}
 	var contract struct {
 		Paths map[string]map[string]struct {
-			OperationID string `json:"operationId"`
-			Responses map[string]any `json:"responses"`
+			OperationID string         `json:"operationId"`
+			Responses   map[string]any `json:"responses"`
 		} `json:"paths"`
 	}
 	if err = json.Unmarshal(doc, &contract); err != nil {

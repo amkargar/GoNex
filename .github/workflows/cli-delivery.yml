@@ -18,13 +18,8 @@ jobs:
         shell: bash
         run: |
           gofmt -w internal/terminal/style.go internal/cli/help.go internal/cli/root.go internal/cli/build.go internal/cli/help_test.go internal/cli/build_test.go http/routes.go http/routes_test.go observability/logging.go observability/console.go observability/console_test.go examples/basic/modules/users/http/handlers.go examples/basic/modules/users/http/routes.go internal/tooling/clismoke/main.go
-          GONEX_UPDATE_GOLDEN=1 go test ./internal/scaffold -run '^TestTemplateGolden$' -count=1
-          python3 - <<'PY'
-          import subprocess, base64
-          for name in subprocess.check_output(['git', 'diff', '--name-only'], text=True).splitlines():
-              print('FORMATTED_FILE ' + name + ' ' + base64.b64encode(open(name, 'rb').read()).decode())
-          PY
           git diff --exit-code
+          go test ./internal/scaffold -run '^TestTemplateGolden$' -count=1
       - run: go test ./http ./internal/cli ./observability
   executables:
     strategy:

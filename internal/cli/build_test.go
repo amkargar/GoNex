@@ -25,7 +25,7 @@ func TestBuildProducesRunnableExecutable(t *testing.T) {
 	}
 	// A dependency-free fixture isolates the CLI's build/output behavior.
 	for name, body := range map[string]string{
-		"go.mod": "module example.com/shop\n\ngo 1.23.0\n",
+		"go.mod":  "module example.com/shop\n\ngo 1.23.0\n",
 		"main.go": "package main\nimport \"fmt\"\nfunc main(){fmt.Println(\"built application runs\")}\n",
 	} {
 		if err = os.WriteFile(filepath.Join(root, name), []byte(body), 0644); err != nil {
