@@ -72,7 +72,7 @@ jobs:
           code=$(curl --max-time 5 -s -o /tmp/readiness-body -w '%{http_code}' http://127.0.0.1:8080/readyz)
           test "$code" = 503
           docker compose -f "$compose_file" start postgres
-          for attempt in $(seq 1 60); do
+          for _attempt in $(seq 1 60); do
             code=$(curl --max-time 3 -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/readyz || true)
             if [ "$code" = 200 ]; then break; fi
             sleep 1
