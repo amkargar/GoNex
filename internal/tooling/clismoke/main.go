@@ -105,7 +105,7 @@ func run() error {
 	defer logFile.Close()
 	process := exec.CommandContext(ctx, binary)
 	process.Dir = appDir
-	process.Env = append(env, "HTTP_ADDRESS="+address, "APP_NAME=shop", "GONEX_LOG_FORMAT=pretty", "GONEX_LOG_COLOR=never", "DATABASE_DIALECT=sqlite", "DATABASE_URL=file:"+filepath.ToSlash(filepath.Join(root, "smoke.db")))
+	process.Env = append(env, "HTTP_ADDRESS="+address, "APP_NAME=shop", "DEBUG=true", "GONEX_LOG_FORMAT=pretty", "GONEX_LOG_COLOR=never", "DATABASE_DIALECT=sqlite", "DATABASE_URL=file:"+filepath.ToSlash(filepath.Join(root, "smoke.db")))
 	process.Stdout, process.Stderr = logFile, logFile
 	if err = process.Start(); err != nil {
 		return err
@@ -144,6 +144,33 @@ func run() error {
 		res.Body.Close()
 		if err != nil || res.StatusCode != 200 || len(body) == 0 {
 			return fmt.Errorf("invalid executable response %s: %d %v", path, res.StatusCode, err)
+		}
+	}
+	for _, path := range []string{"/", "/missing-debug-route", "/_gonex/debug/duck.webp"} {
+		req, _ := http.NewRequest("GET", baseURL+path, nil)
+		req.Header.Set("Accept", "text/html")
+		res, err := client.Do(req)
+		if err != nil {
+			return err
+		}
+		body, err := io.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil {
+			return err
+		}
+		switch path {
+		case "/":
+			if res.StatusCode != 200 || !bytes.Contains(body, []byte("Welcome to Gonex")) {
+				return fmt.Errorf("welcome page missing from executable")
+			}
+		case "/missing-debug-route":
+			if res.StatusCode != 404 || !bytes.Contains(body, []byte("Registered routes")) {
+				return fmt.Errorf("debug error page missing from executable")
+			}
+		default:
+			if res.StatusCode != 200 || !bytes.HasPrefix(body, []byte("RIFF")) {
+				return fmt.Errorf("duck image missing from executable")
+			}
 		}
 	}
 	if runtime.GOOS != "windows" {

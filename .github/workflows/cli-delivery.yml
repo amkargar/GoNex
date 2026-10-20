@@ -17,9 +17,47 @@ jobs:
       - name: Verify formatting and template fixture
         shell: bash
         run: |
-          gofmt -w internal/terminal/style.go internal/cli/help.go internal/cli/root.go internal/cli/build.go internal/cli/help_test.go internal/cli/build_test.go http/routes.go http/routes_test.go observability/logging.go observability/console.go observability/console_test.go examples/basic/modules/users/http/handlers.go examples/basic/modules/users/http/routes.go internal/tooling/clismoke/main.go
+          gofmt -w internal/terminal/style.go internal/cli/help.go internal/cli/root.go internal/cli/build.go internal/cli/help_test.go internal/cli/build_test.go http/routes.go http/routes_test.go observability/logging.go observability/console.go observability/console_test.go examples/basic/modules/users/http/handlers.go examples/basic/modules/users/http/routes.go internal/tooling/clismoke/main.go internal/debugui/page.go http/debug.go http/router.go app/app.go config/config.go http/response.go http/endpoint.go tests/debug_test.go
+          GONEX_UPDATE_GOLDEN=1 go test ./internal/scaffold -run '^TestTemplateGolden
+      - run: go test ./http ./internal/cli ./observability
+  executables:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target_os: linux
+            arch: amd64
+          - runner: ubuntu-latest
+            target_os: linux
+            arch: arm64
+          - runner: windows-latest
+            target_os: windows
+            arch: amd64
+          - runner: windows-latest
+            target_os: windows
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    env:
+      SMOKE_GOOS: ${{ matrix.target_os }}
+      SMOKE_GOARCH: ${{ matrix.arch }}
+      GOFLAGS: -p=2
+      GOWORK: 'off'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - run: go run ./internal/tooling/clismoke
+ -count=1
+          python3 - <<'PY'
+          import subprocess, base64
+          for name in subprocess.check_output(['git', 'diff', '--name-only'], text=True).splitlines():
+              print('FORMATTED_FILE ' + name + ' ' + base64.b64encode(open(name, 'rb').read()).decode())
+          PY
+          go test ./tests -run '^TestDebug' -count=1 -v
           git diff --exit-code
-          go test ./internal/scaffold -run '^TestTemplateGolden$' -count=1
       - run: go test ./http ./internal/cli ./observability
   executables:
     strategy:

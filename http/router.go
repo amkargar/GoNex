@@ -18,7 +18,16 @@ type Route struct {
 }
 
 // Build validates the complete route set before exposing a router.
-func Build(routes []Route, middleware ...gin.HandlerFunc) (engine *gin.Engine, err error) {
+func Build(routes []Route, middleware ...gin.HandlerFunc) (*gin.Engine, error) {
+	return build(routes, nil, middleware...)
+}
+
+// BuildDebug adds development pages without changing the default router.
+func BuildDebug(routes []Route, options DebugConfig, middleware ...gin.HandlerFunc) (*gin.Engine, error) {
+	return build(routes, &options, middleware...)
+}
+
+func build(routes []Route, options *DebugConfig, middleware ...gin.HandlerFunc) (engine *gin.Engine, err error) {
 	defer func() {
 		if recover() != nil {
 			engine = nil
@@ -29,6 +38,14 @@ func Build(routes []Route, middleware ...gin.HandlerFunc) (engine *gin.Engine, e
 	engine.Use(gin.CustomRecoveryWithWriter(io.Discard, func(c *gin.Context, _ any) {
 		c.AbortWithStatusJSON(500, ErrorResponse{Code: "internal", Message: "internal server error"})
 	}))
+	if options != nil {
+		engine.Use(debugMiddleware(*options, routes))
+		engine.HandleMethodNotAllowed = true
+		engine.NoRoute(debugFallback(*options))
+		engine.NoMethod(func(c *gin.Context) {
+			c.JSON(405, ErrorResponse{Code: "method_not_allowed", Message: "This route does not accept the requested method."})
+		})
+	}
 	for _, handler := range middleware {
 		if handler == nil {
 			return nil, fmt.Errorf("nil HTTP middleware")

@@ -9,3 +9,11 @@ Terminate public HTTPS at a verified reverse proxy/platform and forward register
 Use /healthz for liveness and /readyz for traffic admission. Remove an unready instance from traffic; diagnose its request/trace IDs and dependency readiness. Do not expose /metrics, management APIs or schema documents publicly without a deliberate policy. Request contexts must carry deadlines into database/RPC calls. Business operations must define idempotency before adding retries.
 
 Rollout acceptance includes authn/authz/validation/CRUD E2E, dependency outage/recovery, shutdown under active requests and deployment-hardware load. Retain binary/image digests, Go/dependency versions, environment and results. A container build alone is not a deployed production sign-off. See production-checklist.md, troubleshooting.md and production-readiness/final-report.md.
+
+
+## Disable development pages
+
+Set `DEBUG=false` explicitly on public deployments. A generated application's
+`config.Load()` reads `DEBUG=true` as an opt-in to browser diagnostics and the
+fallback welcome page. Debug mode can display original errors and stack traces.
+It is independent of `GONEX_ENV`; see [development pages](debug.md).
