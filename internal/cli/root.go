@@ -32,32 +32,6 @@ func version() string {
 	return v
 }
 
-const help = `
-  new NAME --module IMPORT_PATH [--framework-version VERSION] [--arch monolith|microservices] [--dry-run]
-  create module NAME [--service NAME] [--transport http|none|grpc|http,grpc] [--db] [--dry-run]
-  create service NAME [--http] [--grpc] [--transport none] [--dry-run]
-  create client PROVIDER --service CONSUMER --module MODULE [--version v1] [--profile skeleton|example|raw] [--rpc Service.Method] [--dry-run]
-  module enable NAME --grpc [--service NAME] [--dry-run]
-  module version NAME --http vN [--policy preserve|replace] [--prefix PATH] [--dry-run]
-  create module NAME --http-version vN [--dry-run]
-  upgrade --framework-version VERSION [--dry-run]
-  dev [--service NAME] [--dev-insecure] [--generate] [--isolated]
-  doctor [--service NAME] [--dev-insecure] [--json]
-  run | build | check [--service NAME]
-  openapi generate [--out openapi.json] [--http-version vN] [--dry-run]
-  openapi validate [--file openapi.json] [--against BASELINE]
-  db migrate | db status [--dry-run]
-  grpc generate [--check] [--dry-run] | grpc check
-Generators refuse handwritten overwrites. Run project commands from its root.
-Example: gonex new commerce --module example.com/acme/commerce --arch microservices
-Then: go mod tidy; go tool gonex create service identity --grpc
-      go tool gonex create service orders --http
-Read docs/microservices-dx/quickstart.md for the explicit mapped client edits,
-then run go tool gonex doctor --dev-insecure and go tool gonex dev --dev-insecure.
-Exit 0: success/help; exit 1: validation/generation/startup failure.
-Child Go commands may propagate their own non-zero exit status.
-`
-
 type invocation struct {
 	ctx         context.Context
 	dir         string
@@ -65,15 +39,14 @@ type invocation struct {
 }
 
 func Execute(ctx context.Context, args []string, dir string, out, errout io.Writer) int {
-	for _, arg := range args {
-		if arg == "--help" {
-			fmt.Fprintf(out, "gonex %s%s", version(), help)
-			return 0
-		}
-	}
 	c := invocation{ctx: ctx, dir: dir, out: out, errout: errout}
-	if len(args) == 0 || args[0] == "--help" || args[0] == "help" {
-		fmt.Fprintf(out, "gonex %s%s", version(), help)
+	topic, requested, helpErr := helpRequest(args)
+	if requested {
+		if helpErr != nil {
+			fmt.Fprintln(errout, "gonex:", helpErr)
+			return 1
+		}
+		c.showHelp(topic)
 		return 0
 	}
 	if args[0] == "--version" {
@@ -180,7 +153,9 @@ func (c invocation) execute(args []string) error {
 		return nil
 	case "create":
 		return c.create(args[1:])
-	case "run", "build", "check":
+	case "build":
+		return c.build(args[1:])
+	case "run", "check":
 		f := c.flags(args[0])
 		service := f.String("service", "", "workspace service")
 		if err := f.Parse(args[1:]); err != nil {
@@ -202,9 +177,6 @@ func (c invocation) execute(args []string) error {
 				return nil
 			}
 			return err
-		}
-		if args[0] == "build" {
-			return c.goTool("build", "./...")
 		}
 		for _, command := range []string{"test", "vet", "build"} {
 			if err := c.goTool(command, "./..."); err != nil {

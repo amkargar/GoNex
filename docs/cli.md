@@ -57,13 +57,13 @@ Versioning defaults to `preserve` and `/api/vN`. `replace` stops registering leg
 
 ```sh
 gonex run [--service NAME]
-gonex build [--service NAME]
+gonex build [--os OS] [--arch ARCH] [--out FILE] [--service NAME]
 gonex check [--service NAME]
 gonex --help
 gonex --version
 ```
 
-`run` invokes the Go executable path for the project; the application displays its bound address and writes structured lifecycle/request logs. See [logging](logging.md). `build` builds its packages; `check` runs tests, vet and build. Child command failures preserve their exit codes. A workspace command must identify a service when selection is ambiguous.
+`run` invokes the Go executable path for the project; the application displays its bound address and writes structured lifecycle/request logs. See [logging](logging.md). `build` writes the application executable to `dist/<os>-<arch>/`; `check` runs tests, vet and package compilation. Child command failures preserve their exit codes. A workspace command must identify a service when selection is ambiguous.
 
 ## OpenAPI
 
@@ -109,3 +109,43 @@ Upgrade changes only go.mod tool/require metadata and .gonex.json. It does not m
 create service NAME accepts --http, --grpc, both, or --transport none; no flags retains HTTP defaults. create client accepts --profile skeleton|example|raw and explicit --rpc Service.Method for the limited example contract. Module/client --version vN selects RPC contracts; HTTP versioning remains separate.
 
 doctor [--service NAME] [--dev-insecure] [--json] reports configuration and mapping diagnostics without secrets. dev [--service NAME] [--dev-insecure] [--generate] [--isolated] builds cached dependencies and supervises direct processes. Child failure stops siblings. Generation is explicit; no silent tidy/tool download occurs. Follow [the full tutorial](microservices-dx/quickstart.md).
+
+
+## Command help
+
+Use `gonex -h`, `gonex --help` or `gonex help` for the grouped command overview.
+Every command supports contextual help, including `gonex new -h`,
+`gonex create module -h`, `gonex build --help` and `gonex help create module`.
+Help exits successfully without checking the project or generating files.
+Terminal output uses restrained colors on a supported terminal and plain text
+when redirected, when `TERM=dumb` or when `NO_COLOR` is set.
+
+## Build an executable
+
+`gonex build` invokes `go build -o <file> .` for the selected application,
+rather than only compiling the package tree.
+
+```sh
+go tool gonex build
+go tool gonex build --os windows --arch amd64
+go tool gonex build --os windows --arch arm64
+go tool gonex build --os linux --arch amd64
+go tool gonex build --os linux --arch arm64
+go tool gonex build --os linux --arch amd64 --out ./release/server
+go tool gonex build --service orders --os linux --arch arm64
+```
+
+Targets map to Go's `GOOS` and `GOARCH`. Their defaults are the environment
+values, falling back to the machine running the CLI. Target pairs are validated
+against `go tool dist list`. Other Go build environment settings, including
+`CGO_ENABLED`, remain under the caller's control; dependencies using CGO can
+require a target C toolchain when cross-compiling.
+
+The default output is `dist/<os>-<arch>/<app>`, with `.exe` added for Windows.
+`--out` selects an exact file path; relative paths resolve from the selected
+application/service root. Success reports the target and executable path.
+A run command is shown only when the target OS and architecture match the host;
+the Windows run command is formatted for PowerShell.
+
+Compilation errors remain visible and retain the Go subprocess exit code.
+`gonex check` continues to test, vet and compile all application packages.

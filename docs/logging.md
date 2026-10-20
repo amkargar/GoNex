@@ -14,6 +14,29 @@ go tool gonex run
 
 Readable development output shows the application name, resolved Gonex version, environment, listening address and clickable local URL. Wildcard listeners (`0.0.0.0` or `::`) display a localhost URL with the actual port; this is a local convenience, not a public deployment URL. OpenAPI and optional `/docs` URLs are shown only when enabled, along with registered version-specific documents. HTTP-disabled apps show no HTTP URLs. The startup event is emitted after resources start and the listener binds, never on a failed bind; dependency readiness is still reported separately by `/readyz`.
 
+The pretty format separates startup details from request lines:
+
+```text
+GONEX  ·  shop
+
+  Ready
+
+  Local        http://127.0.0.1:8080
+  Listening    127.0.0.1:8080
+  OpenAPI      http://127.0.0.1:8080/openapi.json
+  Environment  development
+  Version      <installed version>
+
+  Press Ctrl+C to stop.
+
+21:10:03  INFO   GET     /users/:id                200      2.4 ms  request_id=...
+```
+
+Set `APP_NAME=shop` to label the application. Request and trace IDs remain on
+completion lines for correlation. Colors are applied only on supported terminals
+in auto mode; redirected output is plain text. Production auto mode continues to
+emit structured JSON events with the same fields.
+
 Ctrl+C triggers graceful shutdown in the generated executable. Lifecycle events report startup failure, stopping, shutdown failure and successful stop.
 
 ## Configuration
