@@ -57,13 +57,13 @@ Versioning defaults to `preserve` and `/api/vN`. `replace` stops registering leg
 
 ```sh
 gonex run [--service NAME]
-gonex build [--service NAME]
+gonex build [--os OS] [--arch ARCH] [--out FILE] [--service NAME]
 gonex check [--service NAME]
 gonex --help
 gonex --version
 ```
 
-`run` invokes the Go executable path for the project; the application displays its bound address and writes structured lifecycle/request logs. See [logging](logging.md). `build` builds its packages; `check` runs tests, vet and build. Child command failures preserve their exit codes. A workspace command must identify a service when selection is ambiguous.
+`run` invokes the Go executable path for the project; the application displays its bound address and writes structured lifecycle/request logs. See [logging](logging.md). `build` writes the application executable to `dist/<os>-<arch>/`; `check` runs tests, vet and package compilation. Child command failures preserve their exit codes. A workspace command must identify a service when selection is ambiguous.
 
 ## OpenAPI
 

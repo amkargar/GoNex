@@ -74,4 +74,12 @@ func TestBuildProducesRunnableExecutable(t *testing.T) {
 	if Execute(ctx, []string{"build"}, root, &out, &errout) == 0 || strings.Contains(out.String(), "Build complete") || errout.Len() == 0 {
 		t.Fatal("compiler failure was hidden", out.String(), errout.String())
 	}
+	if err = os.WriteFile(filepath.Join(root, "main.go"), []byte("package shop\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	errout.Reset()
+	if Execute(ctx, []string{"build"}, root, &out, &errout) == 0 || strings.Contains(out.String(), "Build complete") {
+		t.Fatal("library archive was reported as an executable", out.String(), errout.String())
+	}
 }

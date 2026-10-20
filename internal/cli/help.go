@@ -138,7 +138,7 @@ var helpTopics = map[string]helpTopic{
 	"grpc": {
 		usage:       "grpc <generate|check> [options]",
 		description: "Generate and check Protobuf contracts.",
-		options:     "  generate   Generate contract artifacts\n  check      Check contract/tooling configuration",
+		options:     "  generate   Generate contract artifacts\n  check      Check contracts against a release baseline",
 		example:     "go tool gonex grpc generate -h",
 	},
 	"grpc generate": {
@@ -149,7 +149,7 @@ var helpTopics = map[string]helpTopic{
 	},
 	"grpc check": {
 		usage:       "grpc check",
-		description: "Check Protobuf contract/tooling configuration.",
+		description: "Check contracts against the release baseline.",
 		options:     "",
 		example:     "go tool gonex grpc check",
 	},

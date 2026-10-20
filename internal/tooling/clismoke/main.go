@@ -105,7 +105,7 @@ func run() error {
 	defer logFile.Close()
 	process := exec.CommandContext(ctx, binary)
 	process.Dir = appDir
-	process.Env = append(env, "HTTP_ADDRESS="+address, "LOG_FORMAT=pretty", "LOG_COLOR=never", "DATABASE_DIALECT=sqlite", "DATABASE_URL=file:"+filepath.ToSlash(filepath.Join(root, "smoke.db")))
+	process.Env = append(env, "HTTP_ADDRESS="+address, "APP_NAME=shop", "GONEX_LOG_FORMAT=pretty", "GONEX_LOG_COLOR=never", "DATABASE_DIALECT=sqlite", "DATABASE_URL=file:"+filepath.ToSlash(filepath.Join(root, "smoke.db")))
 	process.Stdout, process.Stderr = logFile, logFile
 	if err = process.Start(); err != nil {
 		return err

@@ -48,6 +48,16 @@ func (c invocation) build(args []string) error {
 	if !valid {
 		return fmt.Errorf("unsupported target %q; use a GOOS/GOARCH pair from go tool dist list", target)
 	}
+	buildEnv := mergeEnvironment(os.Environ(), []string{"GOOS=" + *targetOS, "GOARCH=" + *targetArch})
+	entry := exec.CommandContext(c.ctx, "go", "list", "-f", "{{.Name}}", ".")
+	entry.Dir, entry.Env, entry.Stderr = root, buildEnv, c.errout
+	packageName, err := entry.Output()
+	if err != nil {
+		return fmt.Errorf("resolve application entry point: %w", err)
+	}
+	if strings.TrimSpace(string(packageName)) != "main" {
+		return fmt.Errorf("application root must be package main to build an executable")
+	}
 	name := filepath.Base(root)
 	if *output == "" {
 		*output = filepath.Join("dist", *targetOS+"-"+*targetArch, name)
@@ -72,7 +82,7 @@ func (c invocation) build(args []string) error {
 		terminal.Paint(color, "1;33", "GONEX"), terminal.Safe(name))
 	cmd := exec.CommandContext(c.ctx, "go", "build", "-o", destination, ".")
 	cmd.Dir = root
-	cmd.Env = mergeEnvironment(os.Environ(), []string{"GOOS=" + *targetOS, "GOARCH=" + *targetArch})
+	cmd.Env = buildEnv
 	cmd.Stdout = c.out
 	cmd.Stderr = c.errout
 	cmd.Stdin = os.Stdin

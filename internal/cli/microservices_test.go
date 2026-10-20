@@ -119,7 +119,11 @@ func NewModuleService(r *app.Registrar)(*Service,error){settings,err:=config.Loa
 	if err != nil {
 		t.Fatal(err)
 	}
-	routes = bytes.ReplaceAll(routes, []byte("Status: 200,"), []byte("Status: 200, Errors: []int{503},"))
+	needle := []byte("Tags(\"orders\"),")
+	if !bytes.Contains(routes, needle) {
+		t.Fatal("generated route declaration changed; update the failure contract explicitly")
+	}
+	routes = bytes.ReplaceAll(routes, needle, []byte("Tags(\"orders\").Errors(503),"))
 	if err = os.WriteFile(routesPath, routes, 0644); err != nil {
 		t.Fatal(err)
 	}
