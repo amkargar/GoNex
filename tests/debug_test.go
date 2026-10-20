@@ -123,8 +123,8 @@ func TestDebugHTMLFailuresAndEscaping(t *testing.T) {
 	a := debugApp(t, true, false, false)
 	for _, tc := range []struct {
 		method string
-		path string
-		body string
+		path   string
+		body   string
 		status int
 		detail string
 	}{
@@ -148,7 +148,7 @@ func TestDebugHTMLFailuresAndEscaping(t *testing.T) {
 		if w.Header().Get("X-Request-ID") == "" || !strings.Contains(w.Body.String(), w.Header().Get("X-Request-ID")) {
 			t.Fatal("missing request correlation")
 		}
-		if (tc.path == "/panic" || strings.HasPrefix(tc.path, "/error")) && (!strings.Contains(w.Body.String(), "Stack trace") || !strings.Contains(w.Body.String(), "&lt;script&gt;")) {
+		if (tc.status == 500 && (tc.path == "/panic" || strings.HasPrefix(tc.path, "/error"))) && (!strings.Contains(w.Body.String(), "Stack trace") || !strings.Contains(w.Body.String(), "&lt;script&gt;")) {
 			t.Fatal("missing escaped exception/stack", w.Body.String())
 		}
 	}

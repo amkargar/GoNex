@@ -18,24 +18,24 @@ var page = template.Must(template.New("debug").Parse(source))
 
 type Route struct {
 	Method string
-	Path string
+	Path   string
 }
 
 type Page struct {
-	Welcome bool
-	Name string
-	Version string
-	Status int
-	Title string
-	Message string
+	Welcome   bool
+	Name      string
+	Version   string
+	Status    int
+	Title     string
+	Message   string
 	ErrorType string
-	Stack string
-	Method string
-	Path string
-	Matched string
+	Stack     string
+	Method    string
+	Path      string
+	Matched   string
 	RequestID string
-	Routes []Route
-	OpenAPI bool
+	Routes    []Route
+	OpenAPI   bool
 }
 
 func Duck() []byte { return duck }

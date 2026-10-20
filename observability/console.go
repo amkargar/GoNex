@@ -30,9 +30,9 @@ func (h *prettyHandler) startup(b *strings.Builder, attrs []slog.Attr) {
 	}
 	fmt.Fprintf(b, "\n%s  ·  %s\n\n  %s\n\n",
 		terminal.Paint(h.color, "1;33", "GONEX"), terminal.Safe(name), terminal.Paint(h.color, "32", "Ready"))
-	labels := map[string]string{"url": "Local", "listen": "Listening", "openapi": "OpenAPI", "docs": "Docs", "environment": "Environment", "version": "Version"}
+	labels := map[string]string{"url": "Local", "listen": "Listening", "openapi": "OpenAPI", "docs": "Docs", "environment": "Environment", "debug": "Debug", "version": "Version"}
 	printed := map[string]bool{}
-	for _, key := range []string{"url", "listen", "openapi", "docs", "environment", "version"} {
+	for _, key := range []string{"url", "listen", "openapi", "docs", "environment", "debug", "version"} {
 		if value := values[key]; value != "" {
 			fmt.Fprintf(b, "  %-12s %s\n", labels[key], terminal.Safe(value))
 			printed[key] = true

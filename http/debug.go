@@ -17,17 +17,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DebugConfig enables browser diagnostics only through an explicit debug build.
+// DebugConfig explicitly opts into browser diagnostics at runtime.
 type DebugConfig struct {
-	Name string
+	Name    string
 	Version string
 	OpenAPI bool
 }
 
 type debugFailure struct {
 	Message string
-	Type string
-	Stack string
+	Type    string
+	Stack   string
 }
 
 const debugEnabledKey = "gonex.debug.enabled"
@@ -155,9 +155,9 @@ func debugMiddleware(options DebugConfig, routes []Route) gin.HandlerFunc {
 // streams pass through immediately; large/flushed errors also pass through.
 type errorPageWriter struct {
 	gin.ResponseWriter
-	body bytes.Buffer
-	status int
-	size int
+	body    bytes.Buffer
+	status  int
+	size    int
 	forward bool
 }
 
