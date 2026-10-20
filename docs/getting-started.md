@@ -6,7 +6,7 @@ Gonex is an API framework installed as a Go dependency. Create your own applicat
 
 ## Requirements
 
-Use Go 1.27.1 and access to Go modules. Gonex is in development; no release tag is assumed. Install a development snapshot with `@main`, or replace it with a reviewed commit or an actual published tag. Generated applications pin the resolved version used by the installed CLI.
+Use Go 1.27.2 and access to Go modules. Gonex is in development; no release tag is assumed. Install a development snapshot with `@main`, or replace it with a reviewed commit or an actual published tag. Generated applications pin the resolved version used by the installed CLI.
 
 ## Install the CLI
 

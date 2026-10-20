@@ -37,3 +37,11 @@ This implementation tightens early-phase behavior: duplicate JSON keys and unsup
 ## Template compatibility
 
 Templates do not infer business mappings. Older module layouts require the injectable service factory before automatic gRPC enable. Existing handwritten adapters are retained when versions are added; `--policy replace` is an explicit legacy-route registration change.
+
+## Production-readiness hardening upgrade
+
+The minimum Go patch is now 1.27.2 because the vulnerability database reported reachable standard-library issues in 1.27.1. Re-resolve the pinned gRPC, pgx, QUIC and x/* dependency updates with go mod tidy in every module. Keep source contracts independently pinned. Existing handwritten apps do not automatically acquire new generated config fields; logging/telemetry is configured explicitly.
+
+Metrics snapshots add cumulative duration buckets and enforce a 128-operation budget. HTTP request logging now adds service/environment/trace IDs and the traceparent response header. Clients should treat additional operational headers/JSON fields as additive. Applications constructing exported config/measurement structs should use keyed fields. There is no automatic model CRUD or template renderer in this upgrade.
+
+Startup now permits bounded concurrent readiness/shutdown while resources start, and owns the listener until it is explicitly closed. Resource callbacks must honor cancellation. When upgrading a running service, drain the old binary and run contract/DB checks before promotion; binary rollback needs backward-compatible database changes.

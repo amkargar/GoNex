@@ -6,6 +6,7 @@ import (
 	transport "github.com/amkargar/gonex/http"
 	"github.com/gin-gonic/gin"
 	nethttp "net/http"
+	"strings"
 )
 
 type Principal struct {
@@ -16,6 +17,7 @@ type principalKey struct{}
 
 func Current(ctx context.Context) (Principal, bool) {
 	principal, ok := ctx.Value(principalKey{}).(Principal)
+	principal.Roles = append([]string(nil), principal.Roles...)
 	return principal, ok
 }
 
@@ -28,10 +30,11 @@ func Authenticate(verify func(context.Context, *nethttp.Request) (Principal, err
 			return
 		}
 		principal, err := verify(c.Request.Context(), c.Request)
-		if err != nil || principal.Subject == "" {
+		if err != nil || strings.TrimSpace(principal.Subject) == "" {
 			c.AbortWithStatusJSON(401, transport.ErrorResponse{Code: "unauthorized", Message: "authentication required"})
 			return
 		}
+		principal.Roles = append([]string(nil), principal.Roles...)
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), principalKey{}, principal))
 		c.Next()
 	}

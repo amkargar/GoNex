@@ -187,7 +187,15 @@ func RequestLog(logger *slog.Logger) gin.HandlerFunc {
 		requestID := hex.EncodeToString(id)
 		c.Header("X-Request-ID", requestID)
 		requestLogger := logger.With("request_id", requestID)
-		ctx := context.WithValue(c.Request.Context(), requestKey{}, requestID)
+		incoming := ""
+		if values := c.Request.Header.Values("traceparent"); len(values) == 1 {
+			incoming = values[0]
+		}
+		traceCtx := WithTraceparent(c.Request.Context(), incoming)
+		trace := Traceparent(traceCtx)
+		requestLogger = requestLogger.With("trace_id", strings.Split(trace, "-")[1])
+		c.Header("traceparent", trace)
+		ctx := context.WithValue(traceCtx, requestKey{}, requestID)
 		c.Request = c.Request.WithContext(WithLogger(ctx, requestLogger))
 		defer func() {
 			fault := recover()

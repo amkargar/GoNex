@@ -54,7 +54,10 @@ func HTTP(metrics *Metrics) gin.HandlerFunc {
 		if len(values) == 1 {
 			incoming = values[0]
 		}
-		ctx := WithTraceparent(c.Request.Context(), incoming)
+		ctx := c.Request.Context()
+		if !ValidTraceparent(Traceparent(ctx)) {
+			ctx = WithTraceparent(ctx, incoming)
+		}
 		c.Request = c.Request.WithContext(ctx)
 		c.Header("traceparent", Traceparent(ctx))
 		path := c.FullPath()

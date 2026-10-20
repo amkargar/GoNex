@@ -28,3 +28,26 @@ jobs:
       - run: go test ./internal/contracts
       - run: go run ./cmd/gonex grpc generate
       - run: git diff --exit-code -- contracts
+
+  go-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASELINE_REF: ${{ github.event.pull_request.base.sha || github.event.before || 'e835251029c429b599c10da1b06e71dae37fab05' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - run: go install golang.org/x/exp/cmd/apidiff@v0.0.0-20261014143641-f0251eb4aa3e
+      - name: Compare exported Go API
+        run: bash scripts/check-api.sh "$BASELINE_REF"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: go-api-evidence
+          path: .tools/api/
+          retention-days: 30

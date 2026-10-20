@@ -79,7 +79,13 @@ func (d *Database) Start(ctx context.Context) error {
 		return fmt.Errorf("database is closed")
 	}
 	if d.db != nil {
-		return d.pool.PingContext(ctx)
+		if err := d.pool.PingContext(ctx); err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			return fmt.Errorf("database connection failed")
+		}
+		return nil
 	}
 	if err := ctx.Err(); err != nil {
 		return err

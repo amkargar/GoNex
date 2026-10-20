@@ -1,0 +1,9 @@
+# Database reliability and recovery
+
+Supported verification targets are PostgreSQL 16 and file-backed SQLite with the repository's ncruces driver. Run `go test ./tests -run 'Test(DatabaseReliability|MigrationProcessesAndRecovery|Postgres)' -count=3 -v` against an EMPTY disposable database using GONEX_TEST_POSTGRES_DSN. CI additionally sets GONEX_REQUIRE_POSTGRES=1, so a missing PostgreSQL service cannot silently skip the gate. Tests isolate their data in temporary PostgreSQL schemas and clean them up; never point this suite at a production database.
+
+The suite covers CRUD, unique/foreign-key constraints, transaction rollback, query cancellation, three-process migration locking, failed transactional DDL, immutable history and forward recovery. A TCP fault proxy drops pooled connections and refuses reconnects; readiness must fail within its caller budget and recover after the proxy is restored. This establishes connection-loss/recovery behavior; it is not a PostgreSQL crash-recovery or replica-failover certification.
+
+Migrations take a transaction-scoped PostgreSQL advisory lock or SQLite BEGIN IMMEDIATE lock. The pending batch and history writes share one transaction. Migration files must contain transaction-compatible SQL: no concurrent index creation, transaction control or connection-level PRAGMA changes. A failed statement is not recorded as successful. Do not edit applied files; ship a forward migration. Pool closure is final; restoring a network path can recover an open pool, but a closed Database must be replaced with a new instance.
+
+Use bounded contexts for startup, readiness, queries and migration commands. Cooperative driver cancellation is tested; arbitrary application callbacks must honor cancellation. Backups, restore testing, data-retention policy and application-specific compensation remain application/operator responsibilities. Rolling back an application binary does not roll back a database schema.

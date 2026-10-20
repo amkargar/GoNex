@@ -40,8 +40,8 @@ func check(path string) error {
 	}{{"HTTP", "Gin", 5}, {"Database", "GORM", 2}} {
 		baseline := samples[comparison.group+"/"+comparison.baseline]
 		framework := samples[comparison.group+"/Gonex"]
-		if len(baseline) == 0 || len(framework) == 0 {
-			return fmt.Errorf("missing measurements for %s", comparison.group)
+		if len(baseline) < 3 || len(framework) < 3 || len(baseline) != len(framework) {
+			return fmt.Errorf("need at least three balanced measurements for %s", comparison.group)
 		}
 		base := median(baseline)
 		if base <= 0 {

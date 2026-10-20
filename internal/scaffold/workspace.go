@@ -43,7 +43,7 @@ func NewMicroservices(root, modulePath, version string) (*Plan, error) {
 }
 func workspace(m Manifest) []byte {
 	var b strings.Builder
-	b.WriteString("go 1.27.1\n\nuse (\n .\n ./contracts\n")
+	b.WriteString("go 1.27.2\n\nuse (\n .\n ./contracts\n")
 	for _, s := range m.Services {
 		fmt.Fprintf(&b, " ./services/%s\n", s.Name)
 	}
@@ -52,7 +52,7 @@ func workspace(m Manifest) []byte {
 }
 func contractsFiles(prefix, modulePath string) []Change {
 	return []Change{
-		{Path: filepath.Join(prefix, "go.mod"), Data: []byte("module " + modulePath + "\n\ngo 1.27.1\n\nrequire (\n google.golang.org/grpc v1.78.0\n google.golang.org/protobuf v1.36.10\n)\n")},
+		{Path: filepath.Join(prefix, "go.mod"), Data: []byte("module " + modulePath + "\n\ngo 1.27.2\n\nrequire (\n google.golang.org/grpc v1.83.2\n google.golang.org/protobuf v1.36.11\n golang.org/x/net v0.60.0 // indirect\n golang.org/x/text v0.42.0 // indirect\n)\n")},
 		{Path: filepath.Join(prefix, "buf.yaml"), Data: []byte("version: v2\nmodules:\n  - path: proto\nbreaking:\n  use: [FILE]\n")},
 		{Path: filepath.Join(prefix, "buf.gen.yaml"), Data: []byte("version: v2\nplugins:\n  - local: protoc-gen-go\n    out: gen/go\n    opt: paths=source_relative\n  - local: protoc-gen-go-grpc\n    out: gen/go\n    opt: paths=source_relative\n")},
 	}
